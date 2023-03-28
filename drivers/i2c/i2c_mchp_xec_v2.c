@@ -15,6 +15,7 @@
 #include <zephyr/drivers/i2c.h>
 #include <zephyr/drivers/interrupt_controller/intc_mchp_xec_ecia.h>
 #include <zephyr/drivers/pinctrl.h>
+#include <zephyr/drivers/reset.h>
 #include <zephyr/sys/printk.h>
 #include <zephyr/sys/sys_io.h>
 #include <zephyr/logging/log.h>
@@ -90,6 +91,7 @@ struct i2c_xec_config {
 	uint8_t girq_pos;
 	uint8_t pcr_idx;
 	uint8_t pcr_bitpos;
+	struct reset_dt_spec reset;
 	const struct pinctrl_dev_config *pcfg;
 	void (*irq_config_func)(void);
 };
@@ -224,10 +226,9 @@ static int i2c_xec_reset_config(const struct device *dev)
 	data->read_discard = 0;
 
 	/* Assert RESET and clr others */
-	regs->CFG = MCHP_I2C_SMB_CFG_RESET;
-	k_busy_wait(RESET_WAIT_US);
-	/* clear reset, set filter enable, select port */
-	regs->CFG = 0;
+	(void)reset_line_toggle_dt(&cfg->reset);
+
+	/* set filter enable, select port */
 	regs->CFG = MCHP_I2C_SMB_CFG_FLUSH_SXBUF_WO |
 		    MCHP_I2C_SMB_CFG_FLUSH_SRBUF_WO |
 		    MCHP_I2C_SMB_CFG_FLUSH_MXBUF_WO |
@@ -318,8 +319,8 @@ static int i2c_xec_recover_bus(const struct device *dev)
 	LOG_ERR("I2C attempt bus recovery\n");
 
 	/* reset controller to a known state */
-	regs->CFG = MCHP_I2C_SMB_CFG_RESET;
-	k_busy_wait(RESET_WAIT_US);
+	(void)reset_line_toggle_dt(&cfg->reset);
+
 	regs->CFG = BIT(14) | MCHP_I2C_SMB_CFG_FEN |
 		    (cfg->port_sel & MCHP_I2C_SMB_CFG_PORT_SEL_MASK);
 	regs->CFG |= MCHP_I2C_SMB_CFG_FLUSH_SXBUF_WO |
@@ -1097,6 +1098,7 @@ static int i2c_xec_init(const struct device *dev)
 		.girq_pos = DT_INST_PROP_BY_IDX(n, girqs, 1),		\
 		.pcr_idx = DT_INST_PROP_BY_IDX(n, pcrs, 0),		\
 		.pcr_bitpos = DT_INST_PROP_BY_IDX(n, pcrs, 1),		\
+		.reset = RESET_DT_SPEC_INST_GET(n),			\
 		.irq_config_func = i2c_xec_irq_config_func_##n,		\
 		.pcfg = PINCTRL_DT_INST_DEV_CONFIG_GET(n),		\
 	};								\

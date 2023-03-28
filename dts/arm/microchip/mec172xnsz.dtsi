@@ -11,6 +11,7 @@
 #include <zephyr/dt-bindings/gpio/microchip-xec-gpio.h>
 #include <zephyr/dt-bindings/i2c/i2c.h>
 #include <zephyr/dt-bindings/interrupt-controller/mchp-xec-ecia.h>
+#include <zephyr/dt-bindings/reset/mec172x_reset.h>
 #include <freq.h>
 #include <mem.h>
 
@@ -517,6 +518,7 @@
 			interrupts = <20 1>;
 			girqs = <13 0>;
 			pcrs = <1 10>;
+			resets = <&rctl MEC172X_RESET_I2C0>;
 			#address-cells = <1>;
 			#size-cells = <0>;
 			status = "disabled";
@@ -528,6 +530,7 @@
 			interrupts = <21 1>;
 			girqs = <13 1>;
 			pcrs = <3 13>;
+			resets = <&rctl MEC172X_RESET_I2C1>;
 			#address-cells = <1>;
 			#size-cells = <0>;
 			status = "disabled";
@@ -539,6 +542,7 @@
 			interrupts = <22 1>;
 			girqs = <13 2>;
 			pcrs = <3 14>;
+			resets = <&rctl MEC172X_RESET_I2C2>;
 			#address-cells = <1>;
 			#size-cells = <0>;
 			status = "disabled";
@@ -550,6 +554,7 @@
 			interrupts = <23 1>;
 			girqs = <13 3>;
 			pcrs = <3 15>;
+			resets = <&rctl MEC172X_RESET_I2C3>;
 			#address-cells = <1>;
 			#size-cells = <0>;
 			status = "disabled";
@@ -561,6 +566,7 @@
 			interrupts = <158 1>;
 			girqs = <13 4>;
 			pcrs = <3 20>;
+			resets = <&rctl MEC172X_RESET_I2C4>;
 			#address-cells = <1>;
 			#size-cells = <0>;
 			status = "disabled";

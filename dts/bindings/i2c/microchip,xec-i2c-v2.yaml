@@ -26,6 +26,10 @@ properties:
     required: true
     description: PCR sleep register index and bit position
 
+  resets:
+    type: phandle-array
+    required: true
+
   pinctrl-0:
     required: true
 
