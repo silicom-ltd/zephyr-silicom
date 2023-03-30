@@ -7,3 +7,10 @@ config LED_PWM
 	depends on PWM && DT_HAS_PWM_LEDS_ENABLED
 	help
 	  Enable driver for PWM LEDs.
+
+config LED_PWM_MC
+	bool "PWM Controlled Multicolor LED driver"
+	default y
+	depends on PWM && DT_HAS_PWM_LEDS_MULTICOLOR_ENABLED
+	help
+	  Enable driver for PWM-driven Multicolor LEDS
