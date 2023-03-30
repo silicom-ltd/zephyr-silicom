@@ -35,6 +35,7 @@ struct led_pwm_mc_subled {
 struct led_pwm_mc {
 	const int num_colors;
 	const struct led_pwm_mc_subled subleds[3];
+//	struct k_mutex lock;
 };
 
 struct led_pwm_mc_config {
@@ -50,7 +51,7 @@ int led_pwm_mc_calc_components(const struct device *dev, uint8_t brightness)
 
 	for (i = 0; i < config->num_colors; i++) {
 		data[i].brightness = brightness *
-			data[i].intensity / 100;
+			data[i].intensity / 255;
 	}
 
 	return 0;
@@ -74,10 +75,12 @@ static int led_pwm_mc_blink(const struct device *dev, uint32_t led,
 		return -EINVAL;
 	}
 
+//	k_mutex_lock(&config->lock, K_FOREVER);
 	for (i = 0; i < config->num_colors; i++) {
 		dt_pwm = &config->subleds[i].pwm;
 		err = pwm_set_dt(dt_pwm, PWM_USEC(period_usec), PWM_USEC(pulse_usec));
 	}
+//	k_mutex_unlock(&config->lock);
 
 	return err;
 }
@@ -91,17 +94,19 @@ static int led_pwm_mc_set_brightness(const struct device *dev,
 	const struct pwm_dt_spec *dt_pwm;
 	int i, err = 0;
 
-	if (value > 100) {
+	if (value > 255) {
 		return -EINVAL;
 	}
 
+//	k_mutex_lock(&config->lock, K_FOREVER);
 	led_pwm_mc_calc_components(dev, value);
 
 	for (i = 0; i < config->num_colors; i++) {
 		dt_pwm = &config->subleds[i].pwm;
 		err = pwm_set_pulse_dt(dt_pwm, dt_pwm->period *
-				data[i].brightness / 100);
+				data[i].brightness / 255);
 	}
+//	k_mutex_unlock(&config->lock);
 	return err;
 }
 
@@ -112,10 +117,13 @@ static int led_pwm_mc_set_color(const struct device *dev, uint32_t led,
 	struct led_pwm_mc_subled_data *data = dev->data;
 	int i;
 
+//	k_mutex_lock(&config->lock, K_FOREVER);
 	for (i = 0; i < config->num_colors; i++) {
-		data[i].intensity = gamma_table[(int)color[i]*100/255];
+//		data[i].intensity = gamma_table[(int)color[i]*100/255];
+		data[i].intensity = gamma_table[(int)color[i]];
+//		data[i].intensity = color[i];
 	}
-
+//	k_mutex_unlock(&config->lock);
 	return 0;
 }
 
@@ -135,12 +143,6 @@ static int led_pwm_mc_init(const struct device *dev)
 	const struct led_pwm_mc *config = dev->config;
 	int j;
 
-	if (!config->num_colors) {
-		LOG_ERR("%s: no LEDs found (DT child nodes missing)",
-			dev->name);
-		return -ENODEV;
-	}
-
 	for (j = 0; j < config->num_colors; j++) {
 		const struct pwm_dt_spec *pwm = &config->subleds[j].pwm;
 
@@ -149,7 +151,7 @@ static int led_pwm_mc_init(const struct device *dev)
 			return -ENODEV;
 		}
 	}
-
+	k_mutex_init(&config->lock);
 	return 0;
 }
 #endif
@@ -221,6 +223,5 @@ static const struct led_driver_api led_pwm_mc_api = {
 		}							\
 		return 0;						\
 	}
-
 
 DT_FOREACH_CHILD(DT_NODELABEL(pwm_mc_leds), LED_PWM_MC_DEVICE)
