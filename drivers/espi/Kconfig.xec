@@ -210,3 +210,15 @@ config ESPI_PERIPHERAL_EMI1_SHD_MEM_SIZE
           the shared memory region to access the FW-emulated HWMON data.
 endif #ESPI_XEC_PERIPHERAL_EMI1
 
+if ESPI_FLASH_CHANNEL
+
+config ESPI_FLASH_STORAGE
+	bool "ESPI Flash channel storage"
+	default y
+	select FLASH
+	select FLASH_HAS_DRIVER_ENABLED
+	select FLASH_HAS_PAGE_LAYOUT
+	help
+	  Enable shared flash on ESPI to be used as storage
+
+endif #ESPI_FLASH_STORAGE
