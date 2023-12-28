@@ -852,13 +852,13 @@ static inline int z_impl_espi_write_flash(const struct device *dev,
 }
 
 /**
- * @brief Sends a write request packet for shared flash.
+ * @brief Sends an erase request packet for shared flash.
  *
- * This routines provides an interface to send a request to write to the flash
+ * This routines provides an interface to send a request to erase the flash
  * components shared between the eSPI master and eSPI slaves.
  *
  * @param dev Pointer to the device structure for the driver instance.
- * @param pckt Address of the representation of write flash transaction.
+ * @param pckt Address of the representation of an erase flash transaction.
  *
  * @retval -ENOTSUP eSPI flash logical channel transactions not supported.
  * @retval -EBUSY eSPI flash channel is not ready or disabled by master.
