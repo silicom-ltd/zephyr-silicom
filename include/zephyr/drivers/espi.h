@@ -291,8 +291,6 @@ enum lpc_peripheral_opcode {
 #if defined(CONFIG_ESPI_PERIPHERAL_XEC_EMI1)
 	EMI1_GET_SHARED_MEMORY = EMI1_START_OPCODE,
 	EMI1_GET_SHARED_MEMORY_SIZE,
-#else
-#error EMI1 Not Defined!
 #endif
 #if defined(CONFIG_ESPI_PERIPHERAL_CUSTOM_OPCODE)
 	/* Other customized transactions */

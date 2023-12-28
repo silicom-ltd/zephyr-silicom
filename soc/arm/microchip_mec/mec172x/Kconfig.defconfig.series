@@ -16,6 +16,9 @@ config NUM_IRQS
 
 source "soc/arm/microchip_mec/mec172x/Kconfig.defconfig.mec172x*"
 
+config ROM_START_OFFSET
+	default 0x0 if BOOTLOADER_MCUBOOT
+
 if RTOS_TIMER
 
 config SOC_HAS_TIMING_FUNCTIONS
