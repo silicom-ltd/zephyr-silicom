@@ -1,0 +1,14 @@
+description: |
+  XEC MAF flash memory. This binding is for the flash memory itself, not
+  the flash controller peripheral.
+
+include: soc-nv-flash.yaml
+
+compatible: microchip,xec-maf-flash
+
+properties:
+
+  max-sectors:
+    type: int
+    description: max number of flash sectors in the MCU region
+    required: true
