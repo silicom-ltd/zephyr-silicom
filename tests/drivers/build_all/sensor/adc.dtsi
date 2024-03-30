@@ -79,3 +79,12 @@ test_tdk_ntcg163jf103ft1: tdk-ntcg163jf103ft1 {
 	pulldown-ohm = <10000>;
 	connected-positive;
 };
+
+test_murata_ncp15xh103: murata-ncp15xh103 {
+	compatible = "murata,ncp15xh103";
+	io-channels = <&test_adc 0>;
+	pullup-uv = <3300000>;
+	pullup-ohm = <0>;
+	pulldown-ohm = <10000>;
+	connected-positive;
+};
