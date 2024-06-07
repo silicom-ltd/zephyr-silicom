@@ -31,11 +31,14 @@ struct i2c_eeprom_target_config {
 	uint8_t *buffer;
 };
 
+static uint8_t fake_eeprom[DT_INST_PROP(0, size)];
+
 int eeprom_target_program(const struct device *dev, const uint8_t *eeprom_data,
 			 unsigned int length)
 {
 	struct i2c_eeprom_target_data *data = dev->data;
-
+	
+	LOG_WRN("Calling in %s", __func__);
 	if (length > data->buffer_size) {
 		return -EINVAL;
 	}
@@ -50,6 +53,7 @@ int eeprom_target_read(const struct device *dev, uint8_t *eeprom_data,
 {
 	struct i2c_eeprom_target_data *data = dev->data;
 
+	LOG_WRN("Calling in %s", __func__);
 	if (!data || offset >= data->buffer_size) {
 		return -EINVAL;
 	}
@@ -83,11 +87,11 @@ static int eeprom_target_write_requested(struct i2c_target_config *config)
 	struct i2c_eeprom_target_data *data = CONTAINER_OF(config,
 						struct i2c_eeprom_target_data,
 						config);
-
 	LOG_DBG("eeprom: write req");
 
 	data->first_write = true;
 
+	LOG_WRN("lom mockup: write req, first write %d", data->first_write);
 	return 0;
 }
 
@@ -101,6 +105,8 @@ static int eeprom_target_read_requested(struct i2c_target_config *config,
 	*val = data->buffer[data->buffer_idx];
 
 	LOG_DBG("eeprom: read req, val=0x%x", *val);
+
+	LOG_WRN("lom mockup: read req, index=%d val=0x%x", data->buffer_idx, *val);
 
 	/* Increment will be done in the read_processed callback */
 
@@ -130,6 +136,8 @@ static int eeprom_target_write_received(struct i2c_target_config *config,
 
 	data->buffer_idx = data->buffer_idx % data->buffer_size;
 
+	LOG_WRN("lom mockup: write done, first write %d val=0x%x", data->first_write, val);
+
 	return 0;
 }
 
@@ -146,6 +154,8 @@ static int eeprom_target_read_processed(struct i2c_target_config *config,
 	*val = data->buffer[data->buffer_idx];
 
 	LOG_DBG("eeprom: read done, val=0x%x", *val);
+
+	LOG_WRN("lom mockup: read done, val=0x%x", *val);
 
 	/* Increment will be done in the next read_processed callback
 	 * In case of STOP, the byte won't be taken in account
@@ -164,6 +174,7 @@ static int eeprom_target_stop(struct i2c_target_config *config)
 
 	data->first_write = true;
 
+	LOG_WRN("lom mockup: stop");
 	return 0;
 }
 
@@ -198,6 +209,7 @@ static int eeprom_target_register(const struct device *dev)
 	const struct i2c_eeprom_target_config *cfg = dev->config;
 	struct i2c_eeprom_target_data *data = dev->data;
 
+//	LOG_WRN("Calling in %s", __func__);
 	return i2c_target_register(cfg->bus.bus, &data->config);
 }
 
@@ -206,6 +218,7 @@ static int eeprom_target_unregister(const struct device *dev)
 	const struct i2c_eeprom_target_config *cfg = dev->config;
 	struct i2c_eeprom_target_data *data = dev->data;
 
+//	LOG_WRN("Calling in %s", __func__);
 	return i2c_target_unregister(cfg->bus.bus, &data->config);
 }
 
@@ -231,15 +244,22 @@ static int i2c_eeprom_target_init(const struct device *dev)
 	struct i2c_eeprom_target_data *data = dev->data;
 	const struct i2c_eeprom_target_config *cfg = dev->config;
 
+//	LOG_WRN("Calling in %s", __func__);
 	if (!device_is_ready(cfg->bus.bus)) {
 		LOG_ERR("I2C controller device not ready");
 		return -ENODEV;
 	}
 
+	LOG_WRN("lom mockup: init addr %x buffer size %x", cfg->bus.addr, cfg->buffer_size);
 	data->buffer_size = cfg->buffer_size;
-	data->buffer = cfg->buffer;
+//	data->buffer = cfg->buffer;
+	data->buffer = fake_eeprom;
+	memset(fake_eeprom, 0xFF, ARRAY_SIZE(fake_eeprom));
 	data->config.address = cfg->bus.addr;
 	data->config.callbacks = &eeprom_callbacks;
+
+	if (eeprom_target_register(dev) < 0)
+		LOG_ERR("%s, Register failed", __func__);
 
 	return 0;
 }
