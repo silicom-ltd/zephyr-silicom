@@ -128,6 +128,7 @@ static int rpm2pwm_xec_set_cycles_internal(const struct device *dev, uint32_t ch
 	regs->SPINUP |= spinup;
 
 	config = regs->CONFIG;
+	config &= ~(0x3 << 5);	/* clear range field */
 	config &= ~(0x3 << 3);	/* clear edges field */
 	config &= ~(0x3 << 12); /* clear the DER field */
 	config |= (1 << 12);	/* basic derivative */
