@@ -60,6 +60,101 @@ properties:
   pinctrl-names:
     required: true
 
+  gain:
+    type: array
+    required: false
+    description: |
+      Array of proportional/integral/derivative gain for fan speed control.  Values can only be 1,2,4,8.
+
+  der_opts:
+    type: string
+    required: false
+    description: |
+      Derivative options: 
+      - RPM2PWM_DERIVATIVE_NONE: No derivative option
+      - RPM2PWM_DERIVATIVE_BASIC: Basic derivative of error added to PWM drive
+      - RPM2PWM_DERIVATIVE_STEP: Derivative is not limited by max step value
+      - RPM2PWM_DERIVATIVE_BOTH: Use both Basic and Step derivative, doubling derivative effect
+    enum:
+      - "RPM2PWM_DERIVATIVE_NONE"
+      - "RPM2PWM_DERIVATIVE_BASIC"
+      - "RPM2PWM_DERIVATIVE_STEP"
+      - "RPM2PWM_DERIVATIVE_BOTH"
+
+  update:
+    type: string
+    required: false
+    description: |
+      Update times:
+      - RPM2PWM_UPDATE_100MS: 100ms update period
+      - RPM2PWM_UPDATE_200MS: 200ms update period
+      - RPM2PWM_UPDATE_300MS: 300ms
+      - RPM2PWM_UPDATE_400MS: etc
+      - RPM2PWM_UPDATE_500MS:
+      - RPM2PWM_UPDATE_800MS:
+      - RPM2PWM_UPDATE_1200MS:
+      - RPM2PWM_UPDATE_1600MS:
+    enum:
+      - "RPM2PWM_UPDATE_100MS"
+      - "RPM2PWM_UPDATE_200MS"
+      - "RPM2PWM_UPDATE_300MS"
+      - "RPM2PWM_UPDATE_400MS"
+      - "RPM2PWM_UPDATE_500MS"
+      - "RPM2PWM_UPDATE_800MS"
+      - "RPM2PWM_UPDATE_1200MS"
+      - "RPM2PWM_UPDATE_1600MS"
+
+  spinup_time:
+    type: string
+    required: false
+    description: |
+      Time the spin-up function runs for.
+    enum:
+      - "RPM2PWM_SPINUP_250MS"
+      - "RPM2PWM_SPINUP_500MS"
+      - "RPM2PWM_SPINUP_1S"
+      - "RPM2PWM_SPINUP_2S"
+
+  spinup_level:
+    type: string
+    required: false
+    description: |
+      Drive level used by the spinup routine
+    enum:
+      - "RPM2PWM_SPINUP_LVL_30%"
+      - "RPM2PWM_SPINUP_LVL_35%"
+      - "RPM2PWM_SPINUP_LVL_40%"
+      - "RPM2PWM_SPINUP_LVL_45%"
+      - "RPM2PWM_SPINUP_LVL_50%"
+      - "RPM2PWM_SPINUP_LVL_55%"
+      - "RPM2PWM_SPINUP_LVL_60%"
+      - "RPM2PWM_SPINUP_LVL_65%"
+
+  spinup_nokick:
+    type: boolean
+    description: |
+      If nokick is enabled, the PWM will not be driven to 100% for the spinup time.
+
+  spinup_drive_fail:
+    type: string
+    description: |
+      How many update cycles for drive fail detection.
+    enum:
+      - "RPM2PWM_SPINUP_DRIVEFAIL_DISABLED"
+      - "RPM2PWM_SPINUP_DRIVEFAIL_16"
+      - "RPM2PWM_SPINUP_DRIVEFAIL_32"
+      - "RPM2PWM_SPINUP_DRIVEFAIL_64"
+
+  enable_ramp_control:
+    type: boolean
+    description: |
+      For manual control of fan speed, enable this. 
+
+  manual_mode:
+    type: boolean
+    description: |
+      Manual (PWM duty cycle) control of the fan IP
+
 child-binding:
   child-binding:
     properties:
