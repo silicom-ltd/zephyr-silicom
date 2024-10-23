@@ -155,6 +155,9 @@ enum espi_pc_event {
 #define EACPI_START_OPCODE      0x60
 #define EACPI_MAX_OPCODE        0x6F
 
+#define EMI1_START_OPCODE	0x70
+#define EMI1_MAX_OPCODE		0x7F
+
 #define ECUSTOM_START_OPCODE    0xF0
 #define ECUSTOM_MAX_OPCODE      0xFF
 
@@ -285,6 +288,12 @@ enum lpc_peripheral_opcode {
 	/* Shared memory region support to return the ACPI response data */
 	EACPI_GET_SHARED_MEMORY,
 #endif /* CONFIG_ESPI_PERIPHERAL_ACPI_SHM_REGION */
+#if defined(CONFIG_ESPI_PERIPHERAL_XEC_EMI1)
+	EMI1_GET_SHARED_MEMORY = EMI1_START_OPCODE,
+	EMI1_GET_SHARED_MEMORY_SIZE,
+#else
+#error EMI1 Not Defined!
+#endif
 #if defined(CONFIG_ESPI_PERIPHERAL_CUSTOM_OPCODE)
 	/* Other customized transactions */
 	ECUSTOM_HOST_SUBS_INTERRUPT_EN = ECUSTOM_START_OPCODE,
