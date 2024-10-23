@@ -191,3 +191,22 @@ config ESPI_PERIPHERAL_KBC_OBE_CBK
 	  Enable KBC OBE callback from OBE ISR
 
 endif #ESPI_XEC_V2 && ESPI_PERIPHERAL_8042_KBC
+
+if ESPI_PERIPHERAL_XEC_EMI1
+
+config ESPI_PERIPHERAL_EMI1_PORT_NUM
+        hex "Host I/O peripheral port number for emi1 shared memory region"
+        default 0x0200
+        help
+          This is the port number used by the host and EC to communicate over
+          the shared memory region to access FW-emulated HWMON data.  Ensure
+          the port number selected doesn't clash with existing ports.
+
+config ESPI_PERIPHERAL_EMI1_SHD_MEM_SIZE
+	int "Host I/O peripheral port size for emi1 shared memory region"
+        default 256
+        help
+          This is the port size used by the Host and EC to communicate over
+          the shared memory region to access the FW-emulated HWMON data.
+endif #ESPI_XEC_PERIPHERAL_EMI1
+

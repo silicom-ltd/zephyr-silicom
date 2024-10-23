@@ -21,6 +21,8 @@
 #include "espi_utils.h"
 #include "espi_mchp_xec_v2.h"
 
+LOG_MODULE_REGISTER(espi_host, CONFIG_ESPI_LOG_LEVEL);
+
 #define CONNECT_IRQ_MBOX0	NULL
 #define CONNECT_IRQ_KBC0	NULL
 #define CONNECT_IRQ_ACPI_EC0	NULL
@@ -704,6 +706,74 @@ static int init_emi0(const struct device *dev)
 
 #endif /* CONFIG_ESPI_PERIPHERAL_EC_HOST_CMD */
 
+#ifdef CONFIG_ESPI_PERIPHERAL_XEC_EMI1
+static uint8_t ec_emi1_sram[CONFIG_ESPI_PERIPHERAL_EMI1_SHD_MEM_SIZE] __aligned(32);
+
+BUILD_ASSERT(DT_NODE_HAS_STATUS(DT_NODELABEL(emi1), okay),
+             "XEC EMI1 DT node is disabled!");
+
+struct xec_emi_config {
+        uintptr_t regbase;
+};
+
+static const struct xec_emi_config xec_emi1_cfg = {
+        .regbase = DT_REG_ADDR(DT_NODELABEL(emi1)),
+};
+
+static int emi1_shm_rd_req(const struct device *dev,
+			enum lpc_peripheral_opcode op,
+			uint32_t *data)
+{
+	ARG_UNUSED(dev);
+
+	LOG_INF("EC_EMI1_SRAM: @ 0x%08x",(uint32_t)ec_emi1_sram);
+	switch (op) {
+	case EMI1_GET_SHARED_MEMORY:
+		*data = (uint32_t)ec_emi1_sram;
+		break;
+	case EMI1_GET_SHARED_MEMORY_SIZE:
+		*data = CONFIG_ESPI_PERIPHERAL_EMI1_SHD_MEM_SIZE;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int emi1_shm_wr_req(const struct device *dev,
+			enum lpc_peripheral_opcode op,
+			uint32_t *data)
+{
+	ARG_UNUSED(dev);
+	ARG_UNUSED(op);
+	ARG_UNUSED(data);
+
+	return 0;
+}
+
+static int init_emi1(const struct device *dev)
+{
+        struct espi_xec_config *const cfg = ESPI_XEC_CONFIG(dev);
+        struct espi_iom_regs *regs = (struct espi_iom_regs *)cfg->base_addr;
+        struct emi_regs *emi_hw =
+                (struct emi_regs *)xec_emi1_cfg.regbase;
+
+        regs->IOHBAR[IOB_EMI1] =
+                                (CONFIG_ESPI_PERIPHERAL_EMI1_PORT_NUM << 16) |
+                                MCHP_ESPI_IO_BAR_HOST_VALID;
+        emi_hw->MEM_BA_0 = (uint32_t)ec_emi1_sram;
+        emi_hw->MEM_RL_0 = CONFIG_ESPI_PERIPHERAL_EMI1_SHD_MEM_SIZE;
+        emi_hw->MEM_WL_0 = CONFIG_ESPI_PERIPHERAL_EMI1_SHD_MEM_SIZE;
+
+        return 0;
+}
+
+#undef INIT_EMI1
+#define INIT_EMI1		init_emi1
+
+#endif /* CONFIG_ESPI_PERIPHERAL_XEC_EMI1 */
+
 #ifdef CONFIG_ESPI_PERIPHERAL_CUSTOM_OPCODE
 
 static void host_cus_opcode_enable_interrupts(void);
@@ -1031,6 +1101,9 @@ static const struct espi_lpc_req espi_lpc_req_tbl[] = {
 #if defined(CONFIG_ESPI_PERIPHERAL_EC_HOST_CMD) && \
 	defined(CONFIG_ESPI_PERIPHERAL_ACPI_SHM_REGION)
 	{ EACPI_GET_SHARED_MEMORY, EACPI_GET_SHARED_MEMORY, eacpi_shm_rd_req, eacpi_shm_wr_req},
+#endif
+#ifdef CONFIG_ESPI_PERIPHERAL_XEC_EMI1
+	{ EMI1_GET_SHARED_MEMORY, EMI1_GET_SHARED_MEMORY_SIZE, emi1_shm_rd_req, emi1_shm_wr_req},
 #endif
 #ifdef CONFIG_ESPI_PERIPHERAL_CUSTOM_OPCODE
 	{ ECUSTOM_START_OPCODE, ECUSTOM_MAX_OPCODE, ecust_rd_req, ecust_wr_req},
