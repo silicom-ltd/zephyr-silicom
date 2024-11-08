@@ -137,14 +137,14 @@ struct fan_config {
 #define XEC_RPM2PWM_SPINUP_LVL_55	5
 #define XEC_RPM2PWM_SPINUP_LVL_60	6
 #define XEC_RPM2PWM_SPINUP_LVL_65	7
-#define XEC_RPM2PMW_SPINUP_LVL_OPT_0	XEC_RPM2PWM_SPINUP_LVL_30
-#define XEC_RPM2PMW_SPINUP_LVL_OPT_1	XEC_RPM2PWM_SPINUP_LVL_35
-#define XEC_RPM2PMW_SPINUP_LVL_OPT_2	XEC_RPM2PWM_SPINUP_LVL_40
-#define XEC_RPM2PMW_SPINUP_LVL_OPT_3	XEC_RPM2PWM_SPINUP_LVL_45
-#define XEC_RPM2PMW_SPINUP_LVL_OPT_4	XEC_RPM2PWM_SPINUP_LVL_50
-#define XEC_RPM2PMW_SPINUP_LVL_OPT_5	XEC_RPM2PWM_SPINUP_LVL_55
-#define XEC_RPM2PMW_SPINUP_LVL_OPT_6	XEC_RPM2PWM_SPINUP_LVL_60
-#define XEC_RPM2PMW_SPINUP_LVL_OPT_7	XEC_RPM2PWM_SPINUP_LVL_65
+#define XEC_RPM2PWM_SPINUP_LVL_OPT_0	XEC_RPM2PWM_SPINUP_LVL_30
+#define XEC_RPM2PWM_SPINUP_LVL_OPT_1	XEC_RPM2PWM_SPINUP_LVL_35
+#define XEC_RPM2PWM_SPINUP_LVL_OPT_2	XEC_RPM2PWM_SPINUP_LVL_40
+#define XEC_RPM2PWM_SPINUP_LVL_OPT_3	XEC_RPM2PWM_SPINUP_LVL_45
+#define XEC_RPM2PWM_SPINUP_LVL_OPT_4	XEC_RPM2PWM_SPINUP_LVL_50
+#define XEC_RPM2PWM_SPINUP_LVL_OPT_5	XEC_RPM2PWM_SPINUP_LVL_55
+#define XEC_RPM2PWM_SPINUP_LVL_OPT_6	XEC_RPM2PWM_SPINUP_LVL_60
+#define XEC_RPM2PWM_SPINUP_LVL_OPT_7	XEC_RPM2PWM_SPINUP_LVL_65
 
 #define XEC_RPM2PWM_SPINUP_NOKICK		0x20u
 #define XEC_RPM2PWM_SPINUP_DRIVEFAIL_POS	6
@@ -259,7 +259,8 @@ static int rpm2pwm_xec_set_cycles_internal(const struct device *dev, uint32_t ch
 		regs->CONFIG = (config | 0x80);
 	}
 	else {
-		regs->SETTING = (1023 / (100 / pulse_count)) << 6;
+//		regs->SETTING = (1023 / (100 / pulse_count)) << 6;
+		regs->SETTING = (unsigned short)((float)1023 / ((float)100 / (float)pulse_count)) << 6;
 	}
 
 
@@ -394,9 +395,12 @@ static int rpm2pwm_xec_init(const struct device *dev)
 		.update = UTIL_CAT(XEC_RPM2PWM_CFG_UPDATE_, XEC_RPM2PWM_UPDATE(inst)),	\
 		.enable_ramp_control = DT_INST_PROP(inst, enable_ramp_control),		\
 		.spinup_nokick = XEC_RPM2PWM_SPINUP_KICK(inst),				\
-		.spinup_time = XEC_RPM2PWM_SPINUP_TIME(inst),				\
-		.spinup_level = XEC_RPM2PWM_SPINUP_LEVEL(inst),				\
-		.spinup_drive_fail = XEC_RPM2PWM_SPINUP_DRIVEFAIL(inst),		\
+		.spinup_time = UTIL_CAT(XEC_RPM2PWM_SPINUP_OPT_, 			\
+				XEC_RPM2PWM_SPINUP_TIME(inst)),				\
+		.spinup_level = UTIL_CAT(XEC_RPM2PWM_SPINUP_LVL_OPT_,	 		\
+				XEC_RPM2PWM_SPINUP_LEVEL(inst)),			\
+		.spinup_drive_fail = UTIL_CAT(XEC_RPM2PWM_SPINUP_DRIVEFAIL_OPT_,	\
+				XEC_RPM2PWM_SPINUP_DRIVEFAIL(inst)),			\
 		.manual_mode = DT_INST_PROP(inst, manual_mode),				\
 		.fan = &fan_##inst##_cfg,						\
 	};
