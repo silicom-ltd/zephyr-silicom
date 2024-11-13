@@ -121,14 +121,14 @@ properties:
     description: |
       Drive level used by the spinup routine
     enum:
-      - "RPM2PWM_SPINUP_LVL_30%"
-      - "RPM2PWM_SPINUP_LVL_35%"
-      - "RPM2PWM_SPINUP_LVL_40%"
-      - "RPM2PWM_SPINUP_LVL_45%"
-      - "RPM2PWM_SPINUP_LVL_50%"
-      - "RPM2PWM_SPINUP_LVL_55%"
-      - "RPM2PWM_SPINUP_LVL_60%"
-      - "RPM2PWM_SPINUP_LVL_65%"
+      - "RPM2PWM_SPINUP_LVL_30"
+      - "RPM2PWM_SPINUP_LVL_35"
+      - "RPM2PWM_SPINUP_LVL_40"
+      - "RPM2PWM_SPINUP_LVL_45"
+      - "RPM2PWM_SPINUP_LVL_50"
+      - "RPM2PWM_SPINUP_LVL_55"
+      - "RPM2PWM_SPINUP_LVL_60"
+      - "RPM2PWM_SPINUP_LVL_65"
 
   spinup_nokick:
     type: boolean
