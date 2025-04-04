@@ -888,6 +888,7 @@ static void i2c_xec_bus_isr(const struct device *dev)
 			 * wants no more then it will NACK.
 			 */
 			regs->I2CDATA = val;
+	LOG_ERR("Slave TxData\n");
 			goto clear_iag; /* Exit ISR */
 		} else {
 			/* target receiver mode */
@@ -908,6 +909,7 @@ static void i2c_xec_bus_isr(const struct device *dev)
 					target_config_for_nack(dev);
 				}
 			}
+	LOG_ERR("Slave RxAddr\n");
 			goto clear_iag; /* Exit ISR */
 		}
 	}
@@ -950,6 +952,7 @@ static void i2c_xec_bus_isr(const struct device *dev)
 		 * Reading I2C Data register causes PIN status 0 -> 1.
 		 */
 		val = regs->I2CDATA;
+	LOG_ERR("Slave RxData\n");
 		if (target_cb->write_received) {
 			/*
 			 * Call back returns error if we should NACK
