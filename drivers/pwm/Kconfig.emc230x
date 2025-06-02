@@ -1,0 +1,13 @@
+#
+# Copyright (c) 2025 Silicom Connectivity Solutions, Ltd.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+config PWM_EMC230X
+	bool "EMC230X 1/2/3/5-channel I2C-bus PWM controller"
+	default y
+	depends on DT_HAS_MICROCHIP_EMC230X_PWM_ENABLED
+	select MFD
+	help
+	  Enable driver for EMC230X 1/2/3/5-channel I2C-bus PWM controller.

@@ -1,0 +1,25 @@
+# Copyright (c) 2025 Silicom Connectivity Solutions, Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+config EMC230X_SENSOR
+	bool "EMC230X sensors"
+	default y
+	depends on EMC230X_FAN_SPEED || EMC230X_FAN_FAULT
+	help
+	  Enable sensors for the EMC230X PWM controller.
+
+config EMC230X_FAN_SPEED
+	bool "EMC230X fan speed sensor"
+	default y
+	depends on DT_HAS_MICROCHIP_EMC230X_FAN_SPEED_ENABLED
+	select MFD
+	help
+	  Enable driver for the EMC230X fan speed sensor.
+
+config EMC230X_FAN_FAULT
+	bool "EMC230X fan fault sensor"
+	default y
+	depends on DT_HAS_MICROCHIP_EMC230X_FAN_FAULT_ENABLED
+	select MFD
+	help
+	  Enable driver for the EMC230X fan fault sensor.

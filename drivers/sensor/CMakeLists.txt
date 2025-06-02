@@ -65,6 +65,12 @@ add_subdirectory_ifdef(CONFIG_TSIC_XX6 tsic_xx6)
 add_subdirectory_ifdef(CONFIG_VEAA_X_3 veaa_x_3)
 add_subdirectory_ifdef(CONFIG_VOLTAGE_DIVIDER voltage_divider)
 add_subdirectory_ifdef(CONFIG_TACH_ENE_KB1200 ene_tach_kb1200)
+add_subdirectory_ifdef(CONFIG_WSEN_HIDS wsen_hids)
+add_subdirectory_ifdef(CONFIG_WSEN_PADS wsen_pads)
+add_subdirectory_ifdef(CONFIG_WSEN_PDUS wsen_pdus)
+add_subdirectory_ifdef(CONFIG_WSEN_TIDS wsen_tids)
+add_subdirectory_ifdef(CONFIG_XMC4XXX_TEMP xmc4xxx_temp)
+add_subdirectory_ifdef(CONFIG_EMC230X emc230x)
 
 zephyr_syscall_header(${ZEPHYR_BASE}/include/zephyr/drivers/sensor.h)
 
