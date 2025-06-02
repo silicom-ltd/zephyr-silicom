@@ -1,0 +1,18 @@
+# Copyright (c) 2025 Silicom Connectivity Solutions, Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+description: Microchip EMC230X 1/2/3/5-channel I2C-bus PWM controller
+
+compatible: "microchip,emc230x-pwm"
+
+include: [pwm-controller.yaml, base.yaml]
+
+on-bus: emc230x
+
+properties:
+  "#pwm-cells":
+    const: 2
+
+pwm-cells:
+  - channel
+  - period

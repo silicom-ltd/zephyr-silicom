@@ -1,0 +1,23 @@
+# Copyright (c) 2025 Silicom Connectivity Solutions, Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+description: fan speed measurement of Microchip EMC230X PWM Controller
+
+compatible: "microchip,emc230x-fan-speed"
+
+include: [sensor-device.yaml]
+
+on-bus: emc230x
+
+properties:
+  channel:
+    type: int
+    enum:
+      - 0
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+    required: true
+    description: PWM channel number
