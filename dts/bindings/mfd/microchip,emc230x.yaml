@@ -1,0 +1,14 @@
+# Copyright (c) 2025 Silicom Connectivity Solutions, Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+description: Microchip EMC230X 1/2/3/5-channel I2C-bus PWM controller, MFD device
+
+compatible: "microchip,emc230x"
+
+include: i2c-device.yaml
+
+bus: emc230x
+
+properties:
+  reg:
+    required: true
