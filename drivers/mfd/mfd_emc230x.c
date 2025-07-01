@@ -16,13 +16,19 @@
 
 LOG_MODULE_REGISTER(microchip_emc230x, CONFIG_MFD_LOG_LEVEL);
 
-struct emc230x_config {
+struct mfd_emc230x_config {
 	struct i2c_dt_spec i2c;
 };
 
-static int emc230x_init(const struct device *dev)
+struct mfd_emc230x_data {
+       struct k_mutex mutex;
+       const struct device *dev;
+};
+       
+static int mfd_emc230x_init(const struct device *dev)
 {
-	const struct emc230x_config *config = dev->config;
+	const struct mfd_emc230x_config *config = dev->config;
+	struct mfd_emc230x_data *mfd_data = dev->data;
 	int result;
 	uint8_t reg_value;
 
@@ -31,6 +37,8 @@ static int emc230x_init(const struct device *dev)
 		return -ENODEV;
 	}
 
+	mfd_data->dev = dev;
+
 	reg_value = 0;
 	reg_value &= ~EMC230X_GLOBALCONFIGURATION_WD_EN_BIT;
 	reg_value |= EMC230X_GLOBALCONFIGURATION_MASK_BIT;
@@ -38,7 +46,7 @@ static int emc230x_init(const struct device *dev)
 	reg_value &= ~EMC230X_GLOBALCONFIGURATION_DRECK_BIT;
 	reg_value &= ~EMC230X_GLOBALCONFIGURATION_USECK_BIT;
 
-	result = i2c_reg_write_byte_dt(&config->i2c, EMC230X_REGISTER_GLOBALCONFIGURATION,
+	result = mfd_emc230x_reg_write(dev, EMC230X_REGISTER_GLOBALCONFIGURATION,
 				       reg_value);
 	if (result != 0) {
 		return result;
@@ -47,12 +55,57 @@ static int emc230x_init(const struct device *dev)
 	return 0;
 }
 
-#define EMC230X_INIT(inst)                                                                         \
-	static const struct emc230x_config emc230x_##inst##_config = {                             \
+int mfd_emc230x_reg_read_burst(const struct device *dev, uint8_t base, void *data,
+			       size_t len)
+{
+	const struct mfd_emc230x_config *config = dev->config;
+	uint8_t buff[] = {base};
+
+	return i2c_write_read_dt(&config->i2c, buff, sizeof(buff), data, len);
+}
+
+int mfd_emc230x_reg_read(const struct device *dev, uint8_t base, uint8_t *data)
+{
+	return mfd_emc230x_reg_read_burst(dev, base, data, 1U);
+}
+
+int mfd_emc230x_reg_write(const struct device *dev, uint8_t base, uint8_t data)
+{
+	const struct mfd_emc230x_config *config = dev->config;
+	uint8_t buff[] = {base, data};
+
+	return i2c_write_dt(&config->i2c, buff, sizeof(buff));
+}
+
+int mfd_emc230x_reg_update(const struct device *dev, uint8_t base, uint8_t data,
+			   uint8_t mask)
+{
+	struct mfd_emc230x_data *mfd_data = dev->data;
+	uint8_t reg;
+	int ret;
+
+	k_mutex_lock(&mfd_data->mutex, K_FOREVER);
+
+	ret = mfd_emc230x_reg_read(dev, base, &reg);
+
+	if (ret == 0) {
+		reg = (reg & ~mask) | (data & mask);
+		ret = mfd_emc230x_reg_write(dev, base, reg);
+	}
+
+	k_mutex_unlock(&mfd_data->mutex);
+
+	return ret;
+}
+
+#define MFD_EMC230X_DEFINE(inst)                                                                   \
+        static struct mfd_emc230x_data data_##inst;                                                 \
+	                                                                                           \
+	static const struct mfd_emc230x_config config##inst = {                                    \
 		.i2c = I2C_DT_SPEC_INST_GET(inst),                                                 \
 	};                                                                                         \
                                                                                                    \
-	DEVICE_DT_INST_DEFINE(inst, emc230x_init, NULL, NULL, &emc230x_##inst##_config,            \
-			      POST_KERNEL, CONFIG_MFD_INIT_PRIORITY, NULL);
+	DEVICE_DT_INST_DEFINE(inst, mfd_emc230x_init, NULL, &data_##inst, &config##inst,           \
+			      POST_KERNEL, CONFIG_MFD_EMC230X_INIT_PRIORITY, NULL);
 
-DT_INST_FOREACH_STATUS_OKAY(EMC230X_INIT);
+DT_INST_FOREACH_STATUS_OKAY(MFD_EMC230X_DEFINE);
