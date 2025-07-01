@@ -7,8 +7,6 @@ compatible: "microchip,emc230x"
 
 include: i2c-device.yaml
 
-bus: emc230x
-
 properties:
   reg:
     required: true

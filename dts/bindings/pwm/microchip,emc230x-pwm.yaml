@@ -7,11 +7,23 @@ compatible: "microchip,emc230x-pwm"
 
 include: [pwm-controller.yaml, base.yaml]
 
-on-bus: emc230x
-
 properties:
   "#pwm-cells":
     const: 2
+
+child-binding:
+  properties:
+    pwms:
+      required: true
+      type: phandle-array
+
+    edges:
+      required: true
+      type: int
+
+    initial:
+      required: false
+      type: int
 
 pwm-cells:
   - channel

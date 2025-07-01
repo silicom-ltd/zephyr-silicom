@@ -1,0 +1,10 @@
+# Copyright (c) 2025, Silicom Connectivity Solutions, Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+# Common fields for fan fault sensors
+
+properties:
+  "#fan-fault-cells":
+    type: int
+    required: true
+    description: Number of items to expect in a fan-fault specifier

@@ -32,6 +32,7 @@
  * can be taken from the datasheet of the EMC230X.
  */
 #define PWM_EMC230X_FLAG_RPM_MODE	       (1 << PWM_EMC230X_FLAG_RPM_MODE_POS)
+
 #if 0
 /*!
  * @brief speed range of fan

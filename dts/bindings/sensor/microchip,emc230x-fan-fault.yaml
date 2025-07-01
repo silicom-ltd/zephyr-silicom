@@ -3,8 +3,17 @@
 
 description: fan fault measurement of Microchip EMC230X PWM Controller
 
+include: [sensor-device.yaml, fan-fault-controller.yaml]
+
 compatible: "microchip,emc230x-fan-fault"
 
-include: [sensor-device.yaml]
-
 on-bus: emc230x
+
+properties:
+
+  "#fan-fault-cells":
+  const: 2
+
+fan-fault-cells:
+  - channel
+  - flags

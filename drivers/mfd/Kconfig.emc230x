@@ -8,3 +8,10 @@ config MFD_EMC230X
 	select I2C
 	help
 	  Enable driver for Microchip EMC230X.
+
+config MFD_EMC230X_INIT_PRIORITY
+	int "emc230x MFD initialization priority"
+	default MFD_INIT_PRIORITY
+	depends on MFD_EMC230X
+	help
+	  Mult-function device initialization priority for emc230x.
