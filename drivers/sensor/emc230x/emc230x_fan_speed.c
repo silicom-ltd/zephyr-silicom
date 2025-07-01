@@ -11,9 +11,16 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/byteorder.h>
 
-#include "emc230x_fan_speed.h"
-
 LOG_MODULE_REGISTER(EMC230X_FAN_SPEED, CONFIG_SENSOR_LOG_LEVEL);
+
+struct emc230x_fan_speed_config {
+	struct device *mfd;
+	uint8_t channel_id;
+};
+
+struct emc230x_fan_speed_data {
+	uint16_t rpm;
+};
 
 static int emc230x_fan_speed_sample_fetch(const struct device *dev, enum sensor_channel chan)
 {
@@ -23,14 +30,14 @@ static int emc230x_fan_speed_sample_fetch(const struct device *dev, enum sensor_
 	uint8_t fan_dynamics;
 	uint8_t number_tach_periods_counted;
 	uint8_t speed_range;
-	uint8_t register_address;
+	uint8_t reg;
 	int result;
 
 	__ASSERT_NO_MSG(chan == SENSOR_CHAN_ALL);
 
-	register_address = EMC230X_REGISTER_TACHCOUNTMSB(config->channel_id);
-	result = i2c_write_read_dt(&config->i2c, &register_address, sizeof(register_address),
-				   &tach_count, sizeof(tach_count));
+	reg = EMC230X_REGISTER_TACHCOUNTMSB(config->channel_id);
+	result = mfd_emc230x_reg_read(config->mfd, reg, &tach_count);
+
 	tach_count = sys_be16_to_cpu(tach_count);
 	if (result != 0) {
 		return result;
@@ -72,19 +79,12 @@ static struct sensor_driver_api emc230x_fan_speed_api = {
 
 static int emc230x_fan_speed_init(const struct device *dev)
 {
-	const struct emc230x_fan_speed_config *config = dev->config;
-
-	if (!i2c_is_ready_dt(&config->i2c)) {
-		LOG_ERR("I2C device not ready");
-		return -ENODEV;
-	}
-
 	return 0;
 }
 
 #define EMC230X_FAN_SPEED_INIT(inst)                                                               \
 	static const struct emc230x_fan_speed_config emc230x_fan_speed_##inst##_config = {         \
-		.i2c = I2C_DT_SPEC_GET(DT_INST_PARENT(inst)),                                      \
+		.mfd = DEVICE_DT_GET(DT_INST_PARENT(inst)),                                        \
 		.channel_id = DT_INST_PROP(inst, channel) - 1,                                     \
 	};                                                                                         \
                                                                                                    \
