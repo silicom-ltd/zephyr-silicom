@@ -14,7 +14,7 @@
 LOG_MODULE_REGISTER(EMC230X_FAN_SPEED, CONFIG_SENSOR_LOG_LEVEL);
 
 struct emc230x_fan_speed_config {
-	struct device *mfd;
+	const struct device *mfd;
 	uint8_t channel_id;
 };
 
@@ -26,10 +26,8 @@ static int emc230x_fan_speed_sample_fetch(const struct device *dev, enum sensor_
 {
 	const struct emc230x_fan_speed_config *config = dev->config;
 	struct emc230x_fan_speed_data *data = dev->data;
-	uint16_t tach_count;
-	uint8_t fan_dynamics;
-	uint8_t number_tach_periods_counted;
-	uint8_t speed_range;
+	uint8_t tach_count;
+	uint16_t tach;
 	uint8_t reg;
 	int result;
 
@@ -38,20 +36,24 @@ static int emc230x_fan_speed_sample_fetch(const struct device *dev, enum sensor_
 	reg = EMC230X_REGISTER_TACHCOUNTMSB(config->channel_id);
 	result = mfd_emc230x_reg_read(config->mfd, reg, &tach_count);
 
-	tach_count = sys_be16_to_cpu(tach_count);
 	if (result != 0) {
 		return result;
 	}
 
-	tach_count >>= 3;
+	tach = (tach_count << 5);
 
-	if (tach_count == 0) {
-		LOG_WRN("%s: tach count is zero", dev->name);
+	reg = EMC230X_REGISTER_TACHCOUNTLSB(config->channel_id);
+	result = mfd_emc230x_reg_read(config->mfd, reg, &tach_count);
+
+	tach |= (tach_count >> 3);
+
+	if (tach == 0x1FFF) {
+		LOG_DBG("%s: tach count is zero", dev->name);
 		data->rpm = UINT16_MAX;
 	} else {
-		LOG_DBG("%s: %i tach count", dev->name,
-			tach_count);
-		data->rpm = 3932160 / tach_count;
+		data->rpm = 3932160 / tach;
+		LOG_DBG("%s: %i tach count, rpm %i", dev->name,
+			tach, data->rpm);
 	}
 
 	return 0;
@@ -85,7 +87,7 @@ static int emc230x_fan_speed_init(const struct device *dev)
 #define EMC230X_FAN_SPEED_INIT(inst)                                                               \
 	static const struct emc230x_fan_speed_config emc230x_fan_speed_##inst##_config = {         \
 		.mfd = DEVICE_DT_GET(DT_INST_PARENT(inst)),                                        \
-		.channel_id = DT_INST_PROP(inst, channel) - 1,                                     \
+		.channel_id = DT_INST_PROP(inst, channel),                                         \
 	};                                                                                         \
                                                                                                    \
 	static struct emc230x_fan_speed_data emc230x_fan_speed_##inst##_data;                      \
@@ -93,6 +95,6 @@ static int emc230x_fan_speed_init(const struct device *dev)
 	SENSOR_DEVICE_DT_INST_DEFINE(inst, emc230x_fan_speed_init, NULL,                           \
 			      &emc230x_fan_speed_##inst##_data,                                    \
 			      &emc230x_fan_speed_##inst##_config, POST_KERNEL,                     \
-			      CONFIG_SENSOR_INIT_PRIORITY, &emc230x_fan_speed_api);
+			      81, &emc230x_fan_speed_api);
 
 DT_INST_FOREACH_STATUS_OKAY(EMC230X_FAN_SPEED_INIT);

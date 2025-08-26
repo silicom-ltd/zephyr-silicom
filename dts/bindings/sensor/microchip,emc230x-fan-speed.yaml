@@ -7,8 +7,6 @@ compatible: "microchip,emc230x-fan-speed"
 
 include: [sensor-device.yaml]
 
-on-bus: emc230x
-
 properties:
   channel:
     type: int
@@ -18,6 +16,5 @@ properties:
       - 2
       - 3
       - 4
-      - 5
     required: true
     description: PWM channel number

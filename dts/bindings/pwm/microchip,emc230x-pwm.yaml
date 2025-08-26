@@ -17,6 +17,10 @@ child-binding:
       required: true
       type: phandle-array
 
+    tach:
+      required: false
+      type: phandle
+
     edges:
       required: true
       type: int
