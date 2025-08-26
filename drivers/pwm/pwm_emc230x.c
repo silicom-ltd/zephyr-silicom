@@ -24,6 +24,7 @@ LOG_MODULE_REGISTER(pwm_emc230x, CONFIG_PWM_LOG_LEVEL);
 struct fan_config {
 	const struct pwm_dt_spec *pwm;
 	const struct device *mfd;
+	const struct device *tach;
 	uint8_t edges;
 	uint8_t initial;
 };
@@ -155,11 +156,6 @@ static int emc230x_set_cycles_internal(const struct device *dev, uint32_t channe
 	uint8_t pwm_frequency_channel_value;
 	uint8_t value_pwm_frequency;
 	uint8_t value_fan_configuration;
-#if 0
-	uint8_t value_fan_dynamics;
-	uint8_t value_speed_range = PWM_MAX31790_FLAG_SPEED_RANGE_GET(flags);
-	uint8_t value_pwm_rate_of_change = PWM_MAX31790_FLAG_PWM_RATE_OF_CHANGE_GET(flags);
-#endif
 
 	if (!emc230x_convert_pwm_frequency_into_register(&pwm_frequency_channel_value,
 							 period_count)) {
@@ -173,75 +169,18 @@ static int emc230x_set_cycles_internal(const struct device *dev, uint32_t channe
 
 	emc230x_set_pwmfrequency(&value_pwm_frequency, channel, pwm_frequency_channel_value);
 
-#if 0
-	result = emc230x_write_register_uint8(dev, EMC230X_REGISTER_PWMFREQUENCY(channel),
-					       value_pwm_frequency);
-	if (result != 0) {
-		return result;
-	}
-
-	value_fan_configuration = 0;
-	value_fan_dynamics = 0;
-#endif
-
 	if (flags & PWM_EMC230X_FLAG_SPIN_UP) {
 		emc230x_set_fan_spinup(&value_fan_configuration, 2);
 	} else {
 		emc230x_set_fan_spinup(&value_fan_configuration, 0);
 	}
 
-#if 0
-	value_fan_configuration &= ~MAX37190_FANXCONFIGURATION_MONITOR_BIT;
-	value_fan_configuration &= ~MAX37190_FANXCONFIGURATION_LOCKEDROTOR_BIT;
-	value_fan_configuration &= ~MAX37190_FANXCONFIGURATION_LOCKEDROTORPOLARITY_BIT;
-	value_fan_configuration &= ~MAX37190_FANXCONFIGURATION_TACH_BIT;
-	value_fan_configuration |= MAX37190_FANXCONFIGURATION_TACHINPUTENABLED_BIT;
+	uint16_t pwm_target_duty_cycle = pulse_count * EMC230X_PWMTARGETDUTYCYCLE_MAXIMUM / 100;
 
-	max31790_set_fandynamics_speedrange(&value_fan_dynamics, value_speed_range);
-	max31790_set_fandynamics_pwmrateofchange(&value_fan_dynamics, value_pwm_rate_of_change);
-	value_fan_dynamics |= MAX37190_FANXDYNAMICS_ASYMMETRICRATEOFCHANGE_BIT;
-#endif
-#if 0
-	if ((flags & PWM_EMC230X_FLAG_RPM_MODE) == 0) {
-		LOG_DBG("PWM mode");
-		uint16_t pwm_target_duty_cycle =
-			pulse_count * EMC230X_PWMTARGETDUTYCYCLE_MAXIMUM / period_count;
-		value_fan_configuration &= ~MAX37190_FANXCONFIGURATION_MODE_BIT;
-#endif
-		uint16_t pwm_target_duty_cycle = pulse_count * EMC230X_PWMTARGETDUTYCYCLE_MAXIMUM / 100;
-
-		result = mfd_emc230x_reg_write(config->mfd, 
-					       EMC230X_REGISTER_FANDRIVESETTING(channel),
-					       pwm_target_duty_cycle);
-		if (result != 0) {
-			return result;
-		}
-#if 0
-	} else {
-		LOG_DBG("RPM mode");
-		value_fan_configuration |= MAX37190_FANXCONFIGURATION_MODE_BIT;
-
-		result = max31790_write_register_uint16(
-			dev, MAX31790_REGISTER_TACHTARGETCOUNTMSB(channel), pulse_count);
-		if (result != 0) {
-			return result;
-		}
-	}
-
-	result = max31790_write_register_uint8(dev, MAX37190_REGISTER_FANCONFIGURATION(channel),
-					       value_fan_configuration);
-	if (result != 0) {
-		return result;
-	}
-
-	result = max31790_write_register_uint8(dev, MAX31790_REGISTER_FANDYNAMICS(channel),
-					       value_fan_dynamics);
-	if (result != 0) {
-		return result;
-	}
-#endif
-
-	return 0;
+	result = mfd_emc230x_reg_write(config->mfd, 
+				       EMC230X_REGISTER_FANDRIVESETTING(channel),
+				       pwm_target_duty_cycle);
+	return result;
 }
 
 static int emc230x_set_cycles(const struct device *dev, uint32_t channel, uint32_t period_count,
@@ -271,7 +210,6 @@ static int emc230x_get_cycles_per_sec(const struct device *dev, uint32_t channel
 	struct emc230x_pwm_data *data = dev->data;
 	int result;
 	bool success;
-//	uint8_t value;
 	uint8_t pwm_frequency_register;
 	uint8_t pwm_frequency = 1;
 	uint16_t pwm_frequency_in_hz;
@@ -396,6 +334,9 @@ static int emc230x_pwm_init(const struct device *dev)
 	return 0;
 }
 
+#define DT_FAN_SPEED_CTLR(node_id)								   \
+	DT_PHANDLE_BY_IDX(node_id, tach, 0)
+
 #define FAN_DEFINE(node_id, id)                                                                    \
 	static const struct pwm_dt_spec fan_pwm_##id =                                             \
 		PWM_DT_SPEC_GET(node_id);                                                          \
@@ -403,6 +344,7 @@ static int emc230x_pwm_init(const struct device *dev)
 	static const struct fan_config fan_##id##_cfg = {                                          \
 		.pwm = &fan_pwm_##id,                                                              \
 		.mfd = DEVICE_DT_GET(DT_GPARENT(node_id)),                                         \
+		.tach = DEVICE_DT_GET(DT_FAN_SPEED_CTLR(node_id),				   \
 		.edges = DT_PROP(node_id, edges),                                                  \
 		.initial = DT_PROP(node_id, initial),						   \
 	};                                                                                         \
