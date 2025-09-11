@@ -49,7 +49,7 @@ static int emc230x_fan_speed_sample_fetch(const struct device *dev, enum sensor_
 
 	if (tach == 0x1FFF) {
 		LOG_DBG("%s: tach count is zero", dev->name);
-		data->rpm = UINT16_MAX;
+		data->rpm = 0;
 	} else {
 		data->rpm = 3932160 / tach;
 		LOG_DBG("%s: %i tach count, rpm %i", dev->name,
