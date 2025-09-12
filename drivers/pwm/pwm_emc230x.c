@@ -257,7 +257,8 @@ static int set_fan_cycles(const struct device *dev, uint32_t pulse_count)
 
 	ARG_UNUSED(config);
 
-	return pwm_set_pulse_dt(pwm, pulse_count);
+//	return pwm_set_pulse_dt(pwm, pulse_count);
+	return pwm_set_cycles(pwm->dev, pwm->channel, 26000, pulse_count, pwm->flags);
 }
 
 static int get_fan_speed(const struct device *dev, struct sensor_value *val)
