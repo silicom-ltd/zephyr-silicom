@@ -25,5 +25,6 @@ source "drivers/mfd/Kconfig.nct38xx"
 source "drivers/mfd/Kconfig.npm1300"
 source "drivers/mfd/Kconfig.npm6001"
 source "drivers/mfd/Kconfig.emc230x"
+source "drivers/mfd/Kconfig.mpq8785"
 
 endif # MFD

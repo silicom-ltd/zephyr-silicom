@@ -1,0 +1,12 @@
+# Copyright (c) 2025 Silicom Connectivity Solutions, Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+description: Monolithic MPQ8785 Step down converter PMBus MFD device
+
+compatible: "mps,mpq8785"
+
+include: i2c-device.yaml
+
+properties:
+  reg:
+    required: true

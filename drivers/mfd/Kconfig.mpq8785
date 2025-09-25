@@ -1,0 +1,19 @@
+# Copyright (c) 2025 Silicom Connectivity Solutions, Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+config MFD_MPQ8785
+	bool "Moonolithic MPQ8785 PMBus step down converter"
+	default y
+	depends on DT_HAS_MICROCHIP_MPQ8785_ENABLED
+	select I2C
+	select SMBUS
+	select PMBUS
+	help
+	  Enable driver for Monolithic MPQ8785.
+
+config MFD_MPQ8785_INIT_PRIORITY
+	int "mpq8785 MFD initialization priority"
+	default MFD_INIT_PRIORITY
+	depends on MFD_MPQ8785
+	help
+	  Mult-function device initialization priority for mpq8785.

@@ -1,0 +1,14 @@
+# Copyright (c) 2025 Silicom Connectivity Solutions, Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+description: XEC SMBus controller
+
+compatible: "microchip,xec-smbus"
+
+include: [smbus-controller.yaml, pinctrl-device.yaml]
+
+properties:
+  i2c:
+    type: phandle
+    required: true
+    description: I2C device which maps to the same address

@@ -95,4 +95,22 @@ config SMBUS_STM32_SMBALERT
 
 endif # SMBUS_STM32
 
+config SMBUS_XEC
+	bool "XEC SMBus driver"
+	default y
+	depends on DT_HAS_MICROCHIP_XEC_SMBUS_ENABLED
+	depends on I2C_XEC || I2C_XEC_V2
+	help
+	  Enable XEC SMBus driver.
+
+if SMBUS_XEC
+
+config SMBUS_XEC_SMBALERT
+	bool "SMBus XEC SMBALERT signal support"
+	default n
+	help
+	  Support SMBALERT signal from peripheral devices.
+
+endif # SMBUS_XEC
+
 endif # SMBUS

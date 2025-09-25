@@ -1,0 +1,14 @@
+# SMBus configuration options
+
+# Copyright (c) 2025 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+menuconfig PMBUS
+	bool "Power Management Bus (PMBus) drivers"
+	depends on SMBUS
+	help
+	  Enable PMBus Driver Configuration
+
+module = PMBUS
+module-str = pmbus
+source "subsys/logging/Kconfig.template.log_config"
