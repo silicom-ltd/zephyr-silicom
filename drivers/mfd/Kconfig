@@ -31,5 +31,7 @@ source "drivers/mfd/Kconfig.lpflexcomm"
 source "drivers/mfd/Kconfig.tle9104"
 source "drivers/mfd/Kconfig.emc230x"
 source "drivers/mfd/Kconfig.mpq8785"
+source "drivers/mfd/Kconfig.crps"
+source "drivers/mfd/Kconfig.mp2928"
 
 endif # MFD

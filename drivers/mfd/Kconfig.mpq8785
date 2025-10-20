@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 config MFD_MPQ8785
-	bool "Moonolithic MPQ8785 PMBus step down converter"
+	bool "Monolithic MPQ8785 PMBus step down converter"
 	default y
-	depends on DT_HAS_MICROCHIP_MPQ8785_ENABLED
+	depends on DT_HAS_MPS_MPQ8785_ENABLED
 	select I2C
 	select SMBUS
 	select PMBUS
