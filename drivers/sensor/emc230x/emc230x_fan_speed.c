@@ -86,7 +86,7 @@ static int emc230x_fan_speed_init(const struct device *dev)
 
 #define EMC230X_FAN_SPEED_INIT(inst)                                                               \
 	static const struct emc230x_fan_speed_config emc230x_fan_speed_##inst##_config = {         \
-		.mfd = DEVICE_DT_GET(DT_INST_PARENT(inst)),                                        \
+		.mfd = DEVICE_DT_GET(DT_INST_BUS(inst)),                                           \
 		.channel_id = DT_INST_PROP(inst, channel),                                         \
 	};                                                                                         \
                                                                                                    \
