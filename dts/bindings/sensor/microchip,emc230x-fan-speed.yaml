@@ -7,6 +7,8 @@ compatible: "microchip,emc230x-fan-speed"
 
 include: [sensor-device.yaml]
 
+on-bus: emc230x
+
 properties:
   channel:
     type: int

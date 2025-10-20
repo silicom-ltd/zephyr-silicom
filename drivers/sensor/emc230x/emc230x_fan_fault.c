@@ -15,41 +15,32 @@
 
 LOG_MODULE_REGISTER(EMC230X_FAN_FAULT, CONFIG_SENSOR_LOG_LEVEL);
 
+struct emc230x_fan_fault_config {
+	const struct device *mfd;
+	uint8_t channel_id;
+};
+
+struct emc230x_fan_fault_data {
+	uint16_t fault;
+};
+
 static int emc230x_fan_fault_sample_fetch(const struct device *dev, enum sensor_channel chan)
 {
 	const struct emc230x_fan_fault_config *config = dev->config;
 	struct emc230x_fan_fault_data *data = dev->data;
 	int result;
 	uint8_t value;
-	uint8_t value1;
 
 	__ASSERT_NO_MSG(chan == SENSOR_CHAN_ALL);
 
-	result = i2c_reg_read_byte_dt(&config->i2c, EMC230X_REGISTER_FANFAULTSTATUS, &value);
+	reg = EMC230X_REGISTER_FANSTALLSTATUS;
+	result = mfd_emc230x_reg_read(config->i2c, reg, &value);
+
 	if (result != 0) {
 		return result;
 	}
 
-	result = i2c_reg_read_byte_dt(&config->i2c, EMC230X_REGISTER_PRODUCT, &value1);
-	if (result != 0) {
-		return result;
-	}
-
-	value1 = EMC230X_PRODUCT_GET(value1);
-	switch (value1) {
-		case 0:
-			data->value = value & 0x1F;
-			break;
-		case 1:
-			data->value = value & 0x7;
-			break;
-		case 2:
-			data->value = value & 0x3;
-			break;
-		case 3:
-			data->value = value & 0x1;
-			break;
-	}
+	data->fault = value & BIT(config->channel_id-1);
 
 	return 0;
 }
@@ -59,7 +50,7 @@ static int emc230x_fan_fault_channel_get(const struct device *dev, enum sensor_c
 {
 	struct emc230x_fan_fault_data *data = dev->data;
 
-	if ((enum sensor_channel_emc230x)chan != SENSOR_CHAN_EMC230X_FAN_FAULT) {
+	if (enum sensor_channel_emc230x)chan != SENSOR_CHAN_EMC230X_FAN_FAULT) {
 		LOG_ERR("%s: requesting unsupported channel %i", dev->name, chan);
 		return -ENOTSUP;
 	}
