@@ -1,0 +1,14 @@
+# Copyright (c) 2025 Silicom Connectivity Solutions, Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+description: Open Compute Project Common Redundant Power Supply
+
+compatible: "ocp,crps"
+
+include: smbus-device.yaml
+
+bus: crps
+
+properties:
+  reg:
+    required: true

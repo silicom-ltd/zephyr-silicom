@@ -1,0 +1,19 @@
+# Copyright (c) 2025 Silicom Connectivity Solutions, Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+config MFD_CRPS
+	bool "Open Compute Project Common Redundant Power Supply"
+	default y
+	depends on DT_HAS_OCP_CRPS_ENABLED
+	select I2C
+	select SMBUS
+	select PMBUS
+	help
+	  Enable driver for OCP CRPS.
+
+config MFD_CRPS_INIT_PRIORITY
+	int "crps MFD initialization priority"
+	default MFD_INIT_PRIORITY
+	depends on MFD_CRPS
+	help
+	  Mult-function device initialization priority for crps.

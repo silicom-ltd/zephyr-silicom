@@ -1,0 +1,41 @@
+# Copyright (c) 2025 Silicom Connectivity Solutions, Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+config CRPS_SENSOR
+	bool "CRPS sensors"
+	default y
+	depends on CRPS_TEMP || CRPS_POWER || CRPS_IOUT
+	help
+	  Enable sensors for the CRPS Temperature sensorr.
+
+config CRPS_POWER
+	bool "CRPS Power output"
+	default y
+	depends on DT_HAS_OCP_CRPS_POWER_ENABLED
+	select MFD
+	help
+	  Enable driver for the CRPS POWER sensor.
+
+config CRPS_VOUT
+	bool "MPQ8785 Voltage output"
+	default y
+	depends on DT_HAS_OCP_CRPS_VOUT_ENABLED
+	select MFD
+	help
+	  Enable driver for the MPQ8785 VOUT sensor.
+
+config CRPS_IOUT
+	bool "CRPS Current output"
+	default y
+	depends on DT_HAS_OCP_CRPS_IOUT_ENABLED
+	select MFD
+	help
+	  Enable driver for the CRPS IOUT sensor.
+
+config CRPS_TEMP
+	bool "CRPS Temperature reading"
+	default y
+	depends on DT_HAS_OCP_CRPS_TEMP_ENABLED
+	select MFD
+	help
+	  Enable driver for the CRPS TEMP sensor.
