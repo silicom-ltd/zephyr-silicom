@@ -30,7 +30,7 @@ extern "C" {
 #define EMC230X_REGISTER_PWMFREQUENCY(channel)             (0x2D - channel/4) /* 0x2C ch 4/5 */
 #define EMC230X_REGISTER_FANCONFIGURATION(channel)         (0x32 + channel*0x10)
 #define EMC230X_REGISTER_FAN2CONFIGURATION(channel)        (0x33 + channel*0x10)
-#define EMC230X_REGISTER_FANFAULTSTATUS                    0x25
+#define EMC230X_REGISTER_FANSTALLSTATUS                    0x25
 #define EMC230X_REGISTER_TACHCOUNTMSB(channel)             (0x3E + channel*0x10)
 #define EMC230X_REGISTER_TACHCOUNTLSB(channel)             (0x3F + channel*0x10)
 #define EMC230X_REGISTER_FANDRIVESETTING(channel)          (0x30 + channel*0x10)
