@@ -1,0 +1,10 @@
+# Copyright (c) 2025 Silicom Connectivity Solutions, Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+description: VOUT measurement of PMBus device for MP2928
+
+compatible: "mps,mp2928-vout"
+
+include: [pmbus.yaml, sensor-device.yaml]
+
+on-bus: mp2928

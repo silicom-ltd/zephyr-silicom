@@ -1,13 +1,13 @@
 # Copyright (c) 2025 Silicom Connectivity Solutions, Ltd.
 # SPDX-License-Identifier: Apache-2.0
 
-description: Monolithic MPQ8785 Step down converter PMBus MFD device
+description: Monolithic MP2928 Digital controller PMBus MFD device
 
-compatible: "mps,mpq8785"
+compatible: "mps,mp2928"
 
 include: smbus-device.yaml
 
-bus: mpq8785
+bus: mp2928
 
 properties:
   reg:

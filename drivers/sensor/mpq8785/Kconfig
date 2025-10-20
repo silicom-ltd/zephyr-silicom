@@ -1,0 +1,41 @@
+# Copyright (c) 2025 Silicom Connectivity Solutions, Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+config MPQ8785_SENSOR
+	bool "MPQ8785 sensors"
+	default y
+	depends on MPQ8785_VIN || MPQ8785_VOUT || MPQ8785_IOUT || MPQ8785_TEMP
+	help
+	  Enable sensors for the MPQ8785 Step down converter.
+
+config MPQ8785_VIN
+	bool "MPQ8785 Voltage input"
+	default y
+	depends on DT_HAS_MPS_MPQ8785_VIN_ENABLED
+	select MFD
+	help
+	  Enable driver for the MPQ8785 VIN sensor.
+
+config MPQ8785_VOUT
+	bool "MPQ8785 Voltage output"
+	default y
+	depends on DT_HAS_MPS_MPQ8785_VOUT_ENABLED
+	select MFD
+	help
+	  Enable driver for the MPQ8785 VOUT sensor.
+
+config MPQ8785_IOUT
+	bool "MPQ8785 Current output"
+	default y
+	depends on DT_HAS_MPS_MPQ8785_IOUT_ENABLED
+	select MFD
+	help
+	  Enable driver for the MPQ8785 IOUT sensor.
+
+config MPQ8785_TEMP
+	bool "MPQ8785 Temperature reading"
+	default y
+	depends on DT_HAS_MPS_MPQ8785_TEMP_ENABLED
+	select MFD
+	help
+	  Enable driver for the MPQ8785 TEMP sensor.

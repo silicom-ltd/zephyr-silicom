@@ -1,0 +1,18 @@
+# Copyright (c) 2025 Silicom Connectivity Solutions, Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+description: TEMP measurement of PMBus device for CRPS
+
+compatible: "ocp,crps-temp"
+
+include: [pmbus.yaml, sensor-device.yaml]
+
+on-bus: crps
+
+properties:
+  temp-reg:
+    type: int
+    required: true
+    enum:
+      - 141
+      - 142

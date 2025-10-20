@@ -437,6 +437,7 @@ nvd	New Vision Display
 nvidia	NVIDIA
 nxp	NXP Semiconductors
 oceanic	Oceanic Systems (UK) Ltd.
+ocp	Open Compute Project
 oct	Octavo Systems LLC
 okaya	Okaya Electric America, Inc.
 oki	Oki Electric Industry Co., Ltd.

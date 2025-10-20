@@ -7,7 +7,7 @@
 #include <zephyr/drivers/pmbus.h>
 #include <zephyr/drivers/smbus.h>
 
-int pmbus_set_page(struct smbus_dt_spec *dev, int page, int phase)
+int pmbus_set_page(const struct smbus_dt_spec *dev, int page, int phase)
 {
 	uint8_t read_page;
 	int ret;
@@ -21,7 +21,7 @@ int pmbus_set_page(struct smbus_dt_spec *dev, int page, int phase)
 	return smbus_byte_data_read(dev->bus, dev->addr, PMBUS_PAGE, &read_page);
 }
 
-int pmbus_write_byte(struct smbus_dt_spec *dev, int page, uint8_t value)
+int pmbus_write_byte(const struct smbus_dt_spec *dev, int page, uint8_t value)
 {
 	int ret;
 
@@ -32,7 +32,7 @@ int pmbus_write_byte(struct smbus_dt_spec *dev, int page, uint8_t value)
 	return smbus_byte_write(dev->bus, dev->addr, value);
 }
 
-int pmbus_write_word_data(struct smbus_dt_spec *dev, int page, uint8_t reg, uint16_t word)
+int pmbus_write_word_data(const struct smbus_dt_spec *dev, int page, uint8_t reg, uint16_t word)
 {
 	int ret;
 
@@ -44,7 +44,7 @@ int pmbus_write_word_data(struct smbus_dt_spec *dev, int page, uint8_t reg, uint
 	return smbus_word_data_write(dev->bus, dev->addr, reg, word);
 }
 
-int pmbus_write_byte_data(struct smbus_dt_spec *dev, int page, int reg, uint8_t val)
+int pmbus_write_byte_data(const struct smbus_dt_spec *dev, int page, uint8_t reg, uint8_t val)
 {
 	int ret;
 
@@ -53,10 +53,10 @@ int pmbus_write_byte_data(struct smbus_dt_spec *dev, int page, int reg, uint8_t 
 	if (ret)
 		return ret;
 
-	return smbus_byte_data_write(dev->bus, dev->addr, (uint8_t)reg, val);
+	return smbus_byte_data_write(dev->bus, dev->addr, reg, val);
 }
 
-int pmbus_read_word_data(struct smbus_dt_spec *dev, int page, int phase, uint8_t reg, uint16_t *val)
+int pmbus_read_word_data(const struct smbus_dt_spec *dev, int page, int phase, uint8_t reg, uint16_t *val)
 {
 	int ret;
 
@@ -68,7 +68,7 @@ int pmbus_read_word_data(struct smbus_dt_spec *dev, int page, int phase, uint8_t
 	return smbus_word_data_read(dev->bus, dev->addr, reg, val);
 }
 
-int pmbus_read_byte_data(struct smbus_dt_spec *dev, int page, uint8_t reg, uint8_t *val)
+int pmbus_read_byte_data(const struct smbus_dt_spec *dev, int page, uint8_t reg, uint8_t *val)
 {
 	int ret;
 

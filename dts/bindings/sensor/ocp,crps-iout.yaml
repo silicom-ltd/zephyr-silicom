@@ -1,0 +1,10 @@
+# Copyright (c) 2025 Silicom Connectivity Solutions, Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+description: Current measurement of PMBus device for CRPS
+
+compatible: "ocp,crps-iout"
+
+include: [pmbus.yaml, sensor-device.yaml]
+
+on-bus: crps

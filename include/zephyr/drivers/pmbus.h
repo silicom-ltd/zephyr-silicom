@@ -1,3 +1,12 @@
+#include <zephyr/drivers/smbus.h>
+
+int pmbus_set_page(const struct smbus_dt_spec *dev, int page, int phase);
+int pmbus_write_byte(const struct smbus_dt_spec *dev, int page, uint8_t value);
+int pmbus_write_word_data(const struct smbus_dt_spec *dev, int page, uint8_t reg, uint16_t word);
+int pmbus_write_byte_data(const struct smbus_dt_spec *dev, int page, uint8_t reg, uint8_t val);
+int pmbus_read_word_data(const struct smbus_dt_spec *dev, int page, int phase, uint8_t reg, uint16_t *val);
+int pmbus_read_byte_data(const struct smbus_dt_spec *dev, int page, uint8_t reg, uint8_t *val);
+
 enum pmbus_cmds {
 	PMBUS_PAGE			= 0x00,
 	PMBUS_OPERATION			= 0x01,

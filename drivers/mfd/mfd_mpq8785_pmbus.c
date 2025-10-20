@@ -31,14 +31,14 @@ int mfd_mpq8785_write(const struct device *dev, uint8_t data)
 {
 	const struct mfd_mpq8785_config *config = dev->config;
 
-	return pmbus_write(config->smbus, data, 1);
+	return pmbus_write_byte(&config->smbus, data, 1);
 }
 
-int mfd_mpq8785_write_byte(const struct device *dev, uint8_t reg, uint8_t byte)
+int mfd_mpq8785_write_byte(const struct device *dev, int page, uint8_t reg, uint8_t byte)
 {
 	const struct mfd_mpq8785_config *config = dev->config;
 
-	return pmbus_write_byte_data(config->smbus, reg, byte);
+	return pmbus_write_byte_data(&config->smbus, page, reg, byte);
 }
 
 
@@ -46,40 +46,37 @@ int mfd_mpq8785_write_word(const struct device *dev, int page, uint8_t reg, uint
 {
 	const struct mfd_mpq8785_config *config = dev->config;
 
-	return pmbus_write_word_data(config->smbus, page, reg, word);
+	return pmbus_write_word_data(&config->smbus, page, reg, word);
 }
 
 int mfd_mpq8785_read_word(const struct device *dev, int page, uint8_t reg, uint16_t *word)
 {
 	const struct mfd_mpq8785_config *config = dev->config;
-	int ret;
-	uint8_t data[2];
 
-	return pmbus_read_word_data(config->smbus, page, reg, word);
+	return pmbus_read_word_data(&config->smbus, page, 0, reg, word);
 }
 
 int mfd_mpq8785_read_byte(const struct device *dev, int page, uint8_t reg, uint8_t *byte)
 {
 	const struct mfd_mpq8785_config *config = dev->config;
 
-	return pmbus_read_byte_data(config->smbus, page, reg, byte);
+	return pmbus_read_byte_data(&config->smbus, page, reg, byte);
 }
 
 static int mfd_mpq8785_init(const struct device *dev)
 {
 	const struct mfd_mpq8785_config *config = dev->config;
 	int result;
-	uint8_t reg_value;
+	uint8_t byte_value;
 
-	result = pmbus_read_byte_data(dev, 0, PMBUS_MFR_ID,
-				       &reg_value);
+	result = pmbus_read_byte_data(&config->smbus, 0, 0x98, &byte_value);
 
 	if (result != 0) {
 		LOG_DBG("Error reading MPQ8785");
 		return result;
 	}
 	else
-		LOG_DBG("MPQ8785 read: 0x%x",reg_value);
+		LOG_DBG("MPQ8785 %s, PMBus Rev: 0x%x", dev->name, byte_value);
 
 	return 0;
 }

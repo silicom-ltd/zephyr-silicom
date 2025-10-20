@@ -1,0 +1,25 @@
+# Copyright (c) 2025 Silicom Connectivity Solutions, Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+config MP2928_SENSOR
+	bool "MP2928 sensors"
+	default y
+	depends on MP2928_TEMP || MP2928_VOUT
+	help
+	  Enable sensors for the MP2928.
+
+config MP2928_VOUT
+	bool "MP2928 Voltage output"
+	default y
+	depends on DT_HAS_MPS_MP2928_VOUT_ENABLED
+	select MFD
+	help
+	  Enable driver for the MP2928 VOUT sensor.
+
+config MP2928_TEMP
+	bool "MP2928 Temperature reading"
+	default y
+	depends on DT_HAS_MPS_MP2928_TEMP_ENABLED
+	select MFD
+	help
+	  Enable driver for the MP2928 TEMP sensor.

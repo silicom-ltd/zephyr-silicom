@@ -1,0 +1,17 @@
+# Copyright (c) 2025 Silicom Connectivity Solutions, Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+# Properties for PMBus devices
+
+properties:
+  page:
+    type: int
+    required: true
+    description: |
+      The page that this PMBus sub-device is located.
+
+  coefficients:
+    type: array
+    description: |
+      Coefficients to determine the actual being reported by the output 
+      registers of a PMBus device, given in terms of m, B, R for slope.

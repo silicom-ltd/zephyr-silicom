@@ -1,0 +1,10 @@
+# Copyright (c) 2025 Silicom Connectivity Solutions, Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+description: VOUT measurement of PMBus device for MPQ8785
+
+compatible: "mps,mpq8785-vout"
+
+include: [pmbus.yaml, sensor-device.yaml]
+
+on-bus: mpq8785

@@ -1,0 +1,10 @@
+# Copyright (c) 2025 Silicom Connectivity Solutions, Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+description: Power measurement of PMBus device for CRPS
+
+compatible: "ocp,crps-power"
+
+include: [pmbus.yaml, sensor-device.yaml]
+
+on-bus: crps
