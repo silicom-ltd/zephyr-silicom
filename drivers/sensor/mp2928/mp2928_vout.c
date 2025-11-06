@@ -26,17 +26,18 @@ struct mp2928_vout_data {
 	int m;
 	int b;
 	int R;
+	int Kr;
 };
 
-/* convert to microwatts */
+/* convert to millivolts */
 static int val2data_direct(const struct device *dev, uint16_t val)
 {
-	const struct mpq8785_vout_config *config = dev->config;
+	struct mp2928_vout_data *data = dev->data;
 
-	int m = config->m;
-	int b = config->b;
-	int R = -(config->R);
-	int ret = (int)data;
+	int m = data->m;
+	int b = data->b;
+	int R = -(data->R);
+	int ret = (int)val;
 
 	R += 3;
 	b *= 1000;
@@ -48,6 +49,8 @@ static int val2data_direct(const struct device *dev, uint16_t val)
 
 	ret = (ret - b) / m;
 
+	ret *= data->Kr;
+
 	return ret;
 }
 
@@ -57,9 +60,16 @@ static int mp2928_vout_sample_fetch(const struct device *dev, enum sensor_channe
 	struct mp2928_vout_data *data = dev->data;
         uint16_t val;
 	uint8_t byte;
+	int direct_mode;
 	int result;
 
-	__ASSERT_NO_MSG(chan == SENSOR_CHAN_ALL);
+	__ASSERT_NO_MSG(chan == SENSOR_CHAN_VOLTAGE);
+
+	result = mfd_mp2928_read_byte(config->mfd, 0, PMBUS_VOUT_MODE, &byte);
+	if (result != 0)
+		return result;
+
+	direct_mode = !!(byte & 0x40);
 
 	result = mfd_mp2928_read_word(config->mfd, config->page, PMBUS_READ_VOUT, &val);
 
@@ -67,14 +77,10 @@ static int mp2928_vout_sample_fetch(const struct device *dev, enum sensor_channe
 		return result;
 	}
 
-	result = val;
-	LOG_DBG("%s vout: 0x%x", dev->name, result);
-
-	result = mfd_mp2928_read_byte(config->mfd, config->page, PMBUS_VOUT_MODE, &byte);
-	LOG_DBG("%s vout_mode: 0x%x", dev->name, byte);
-
-	result = mfd_mp2928_read_word(config->mfd, config->page, 0x29, &val);
-	LOG_DBG("%s vout_scale_loop: 0x%x", dev->name, val);
+	if (direct_mode) {
+		result = val2data_direct(dev, val);
+	}
+	LOG_DBG("%s vout: %dmV", dev->name, result);
 
 	data->voltage = result;
 
@@ -86,7 +92,7 @@ static int mp2928_vout_channel_get(const struct device *dev, enum sensor_channel
 {
 	struct mp2928_vout_data *data = dev->data;
 
-	if (chan != SENSOR_CHAN_POWER) {
+	if (chan != SENSOR_CHAN_VOLTAGE) {
 		return -ENOTSUP;
 	}
 
@@ -103,25 +109,35 @@ static struct sensor_driver_api mp2928_vout_api = {
 static int mp2928_vout_init(const struct device *dev)
 {
 	const struct mp2928_vout_config *config = dev->config;
+	struct mp2928_vout_data *data = dev->data;
 	int result;
 	uint16_t val;
 
-	result  = mfd_mp2928_read_word(config->mfd, config->page, MRF_VR_CONFIG1, &val);
+	result  = mfd_mp2928_read_word(config->mfd, 0, MFR_VR_CONFIG1, &val);
+
+	LOG_DBG("MFR_VR_CONFIG1: 0x%x", val);
 
 	switch (val & 0xC0) {
 		case 0x0:
-			m = 160;
+			data->m = 16;
+			data->R = 1;
 			break;
 		case 0x40:
-			m = 200;
+			data->m = 2;
+			data->R = 2;
 			break;
 		case 0x80:
-			m = 500;
+			data->m = 5;
+			data->R = 2;
 		default:
 			break;
 	}
 
-	mp2928_vout_sample_fetch(dev, SENSOR_CHAN_ALL);
+	result = mfd_mp2928_read_word(config->mfd, config->page, 0x29, &val);
+	LOG_DBG("VOUT_SCALE_LOOP: 0x%x", val);
+	data->Kr = (val & 0xFF) >> 5;
+
+	mp2928_vout_sample_fetch(dev, SENSOR_CHAN_VOLTAGE);
 
 	return 0;
 }
