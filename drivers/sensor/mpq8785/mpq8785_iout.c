@@ -56,8 +56,6 @@ static int mpq8785_iout_sample_fetch(const struct device *dev, enum sensor_chann
         uint16_t val;
 	int result;
 
-	__ASSERT_NO_MSG(chan == SENSOR_CHAN_ALL);
-
 	result = mfd_mpq8785_read_word(config->mfd, config->page, PMBUS_READ_IOUT, &val);
 
 	if (result != 0) {
@@ -77,7 +75,7 @@ static int mpq8785_iout_channel_get(const struct device *dev, enum sensor_channe
 {
 	struct mpq8785_iout_data *data = dev->data;
 
-	if (chan != SENSOR_CHAN_VOLTAGE) {
+	if (chan != SENSOR_CHAN_CURRENT) {
 		return -ENOTSUP;
 	}
 
