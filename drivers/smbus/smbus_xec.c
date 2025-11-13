@@ -249,6 +249,36 @@ static int smbus_xec_block_write(const struct device *dev, uint16_t periph_addr,
 	return i2c_transfer(config->i2c_dev, messages, ARRAY_SIZE(messages), periph_addr);
 }
 
+static int smbus_xec_block_read(const struct device *dev, uint16_t periph_addr, uint8_t command,
+				uint8_t *count, uint8_t *buf)
+{
+	const struct smbus_xec_config *config = dev->config;
+	uint8_t msg_buf[32];
+	int ret;
+
+	struct i2c_msg messages[] = {
+		{
+			.buf = &command,
+			.len = sizeof(command),
+			.flags = I2C_MSG_WRITE,
+		},
+		{
+			.buf = msg_buf,
+			.len = 32,
+			.flags = I2C_MSG_READ | I2C_MSG_RESTART | I2C_MSG_STOP,
+		},
+	};
+
+	ret = i2c_transfer(config->i2c_dev, messages, ARRAY_SIZE(messages), periph_addr);
+
+	memcpy(buf, &msg_buf[1], msg_buf[0]);
+
+	*count = msg_buf[0];
+
+	return ret;
+}
+
+
 static const struct smbus_driver_api smbus_xec_api = {
 	.configure = smbus_xec_configure,
 	.get_config = smbus_xec_get_config,
@@ -268,7 +298,7 @@ static const struct smbus_driver_api smbus_xec_api = {
 	.smbus_smbalert_set_cb = NULL,
 	.smbus_smbalert_remove_cb = NULL,
 #endif /* CONFIG_SMBUS_XEC_SMBALERT */
-	.smbus_block_read = NULL,
+	.smbus_block_read = smbus_xec_block_read,
 	.smbus_block_pcall = NULL,
 	.smbus_host_notify_set_cb = NULL,
 	.smbus_host_notify_remove_cb = NULL,
