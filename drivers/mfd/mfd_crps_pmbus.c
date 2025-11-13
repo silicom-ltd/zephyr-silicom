@@ -7,10 +7,8 @@
 #define DT_DRV_COMPAT ocp_crps
 
 #include <zephyr/device.h>
-//#include <zephyr/drivers/i2c.h>
 #include <zephyr/drivers/smbus.h>
 #include <zephyr/drivers/pmbus.h>
-//#include <zephyr/drivers/mfd/mpq8785.h>
 #include <zephyr/sys/util.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
@@ -68,6 +66,28 @@ static int mfd_crps_init(const struct device *dev)
 	const struct mfd_crps_config *config = dev->config;
 	int result;
 	uint8_t byte_value;
+	uint8_t num_read;
+	uint8_t msg_buf[32];
+
+	result = pmbus_read_block_data(&config->smbus, 0, 0x99, &num_read, msg_buf);
+
+	if (result == 0) {
+		msg_buf[num_read] = 0;
+		LOG_DBG("CRPS MFR_ID: %s", msg_buf);
+	}
+	else {
+		LOG_DBG("Unable to read MFR_ID");
+		dev->state->init_res = -ENODEV;
+		return result;
+	}
+	result = pmbus_read_block_data(&config->smbus, 0, 0x9A, &num_read, msg_buf);
+	if (result == 0) {
+		msg_buf[num_read] = 0;
+		LOG_DBG("CRPS MFR_MODEL %s", msg_buf);
+	}
+	else {
+		return result;
+	}
 
 	result = pmbus_read_byte_data(&config->smbus, 0, 0x98, &byte_value);
 
