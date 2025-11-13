@@ -16,14 +16,6 @@ config CRPS_POWER
 	help
 	  Enable driver for the CRPS POWER sensor.
 
-config CRPS_VOUT
-	bool "MPQ8785 Voltage output"
-	default y
-	depends on DT_HAS_OCP_CRPS_VOUT_ENABLED
-	select MFD
-	help
-	  Enable driver for the MPQ8785 VOUT sensor.
-
 config CRPS_IOUT
 	bool "CRPS Current output"
 	default y

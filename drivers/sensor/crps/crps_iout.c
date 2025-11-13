@@ -46,7 +46,8 @@ static int crps_iout_sample_fetch(const struct device *dev, enum sensor_channel 
         uint16_t val;
 	int result;
 
-	__ASSERT_NO_MSG(chan == SENSOR_CHAN_ALL);
+	if (chan != SENSOR_CHAN_CURRENT)
+		return -ENOTSUP;
 
 	result = mfd_crps_read_word(config->mfd, config->page, PMBUS_READ_IOUT, &val);
 
@@ -55,7 +56,7 @@ static int crps_iout_sample_fetch(const struct device *dev, enum sensor_channel 
 	}
 
 	result = val2data(dev, val);
-	//LOG_DBG("%s Iout: %dmA", dev->name, result);
+	LOG_DBG("%s Iout: %dmA", dev->name, result);
 
 	data->current = result;
 
@@ -67,7 +68,7 @@ static int crps_iout_channel_get(const struct device *dev, enum sensor_channel c
 {
 	struct crps_iout_data *data = dev->data;
 
-	if (chan != SENSOR_CHAN_VOLTAGE) {
+	if (chan != SENSOR_CHAN_CURRENT) {
 		return -ENOTSUP;
 	}
 
@@ -83,7 +84,15 @@ static struct sensor_driver_api crps_iout_api = {
 
 static int crps_iout_init(const struct device *dev)
 {
-	crps_iout_sample_fetch(dev, SENSOR_CHAN_ALL);
+	const struct crps_iout_config *config = dev->config;
+
+	if (device_is_ready(config->mfd)) {
+		crps_iout_sample_fetch(dev, SENSOR_CHAN_CURRENT);
+	}
+	else {
+		dev->state->init_res = -ENODEV;
+		return -ENODEV;
+	}
 
 	return 0;
 }
