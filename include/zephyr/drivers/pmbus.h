@@ -6,6 +6,7 @@ int pmbus_write_word_data(const struct smbus_dt_spec *dev, int page, uint8_t reg
 int pmbus_write_byte_data(const struct smbus_dt_spec *dev, int page, uint8_t reg, uint8_t val);
 int pmbus_read_word_data(const struct smbus_dt_spec *dev, int page, int phase, uint8_t reg, uint16_t *val);
 int pmbus_read_byte_data(const struct smbus_dt_spec *dev, int page, uint8_t reg, uint8_t *val);
+int pmbus_read_block_data(const struct smbus_dt_spec *dev, int page, uint8_t reg, uint8_t *count, uint8_t *val);
 
 enum pmbus_cmds {
 	PMBUS_PAGE			= 0x00,
