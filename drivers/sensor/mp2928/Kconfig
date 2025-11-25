@@ -4,7 +4,7 @@
 config MP2928_SENSOR
 	bool "MP2928 sensors"
 	default y
-	depends on MP2928_TEMP || MP2928_VOUT
+	depends on MP2928_TEMP || MP2928_VOUT || MP2928_IOUT
 	help
 	  Enable sensors for the MP2928.
 
@@ -23,3 +23,12 @@ config MP2928_TEMP
 	select MFD
 	help
 	  Enable driver for the MP2928 TEMP sensor.
+
+config MP2928_IOUT
+	bool "MP2928 Current output"
+	default y
+	depends on DT_HAS_MPS_MP2928_IOUT_ENABLED
+	select MFD
+	help
+	  Enable driver for the MP2928 IOUT sensor.
+
