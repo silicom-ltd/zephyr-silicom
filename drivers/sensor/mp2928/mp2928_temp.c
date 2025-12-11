@@ -40,7 +40,9 @@ static int mp2928_temp_sample_fetch(const struct device *dev, enum sensor_channe
         uint16_t val;
 	int result;
 
-	__ASSERT_NO_MSG(chan == SENSOR_CHAN_ALL);
+	if ((chan != SENSOR_CHAN_DIE_TEMP) && (chan != SENSOR_CHAN_ALL)) {
+		return -ENOTSUP;
+	}
 
 	result = mfd_mp2928_read_word(config->mfd, config->page, PMBUS_READ_TEMP_1, &val);
 

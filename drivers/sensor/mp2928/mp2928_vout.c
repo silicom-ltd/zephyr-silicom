@@ -63,7 +63,9 @@ static int mp2928_vout_sample_fetch(const struct device *dev, enum sensor_channe
 	int direct_mode;
 	int result;
 
-	__ASSERT_NO_MSG(chan == SENSOR_CHAN_VOLTAGE);
+	if ((chan != SENSOR_CHAN_VOLTAGE) && (chan != SENSOR_CHAN_ALL)) {
+		return -ENOTSUP;
+	}
 
 	result = mfd_mp2928_read_byte(config->mfd, 0, PMBUS_VOUT_MODE, &byte);
 	if (result != 0)
