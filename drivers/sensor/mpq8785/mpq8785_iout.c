@@ -26,7 +26,7 @@ struct mpq8785_iout_data {
 	int current;
 };
 
-/* convert to millivolts */
+/* convert to milliamps */
 static int val2data(const struct device *dev, uint16_t data)
 {
 	const struct mpq8785_iout_config *config = dev->config;
@@ -79,8 +79,8 @@ static int mpq8785_iout_channel_get(const struct device *dev, enum sensor_channe
 		return -ENOTSUP;
 	}
 
-	val->val1 = data->current;
-	val->val2 = 0;
+	val->val1 = (data->current / 1000);
+	val->val2 = (data->current % 1000) * 1000;
 	return 0;
 }
 
