@@ -50,7 +50,9 @@ static int crps_temp_sample_fetch(const struct device *dev, enum sensor_channel 
         uint16_t val;
 	int result;
 
-	__ASSERT_NO_MSG(chan == SENSOR_CHAN_ALL);
+	if ((chan != SENSOR_CHAN_DIE_TEMP) && (chan != SENSOR_CHAN_AMBIENT_TEMP) && (chan != SENSOR_CHAN_ALL)) {
+		return -ENOTSUP;
+	}
 
 	result = mfd_crps_read_word(config->mfd, config->page, config->temp_reg, &val);
 
