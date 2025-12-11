@@ -65,8 +65,8 @@ static int mp2928_temp_channel_get(const struct device *dev, enum sensor_channel
 		return -ENOTSUP;
 	}
 
-	val->val1 = data->temperature;
-	val->val2 = 0;
+	val->val1 = (data->temperature / 1000);
+	val->val2 = (data->temperature % 1000) * 1000;
 	return 0;
 }
 
