@@ -86,8 +86,8 @@ static int mp2928_iout_channel_get(const struct device *dev, enum sensor_channel
 		return -ENOTSUP;
 	}
 
-	val->val1 = data->current;
-	val->val2 = 0;
+	val->val1 = (data->current / 1000);
+	val->val2 = (data->current % 1000) * 1000;
 	return 0;
 }
 
