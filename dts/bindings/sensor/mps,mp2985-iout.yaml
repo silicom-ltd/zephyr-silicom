@@ -1,0 +1,10 @@
+# Copyright (c) 2025 Silicom Connectivity Solutions, Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+description: IOUT measurement of PMBus device for MP2985
+
+compatible: "mps,mp2985-iout"
+
+include: [pmbus.yaml, sensor-device.yaml]
+
+on-bus: mp2985

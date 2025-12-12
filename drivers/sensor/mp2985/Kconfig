@@ -1,0 +1,34 @@
+# Copyright (c) 2025 Silicom Connectivity Solutions, Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+config MP2985_SENSOR
+	bool "MP2985 sensors"
+	default y
+	depends on MP2985_TEMP || MP2985_VOUT || MP2985_IOUT
+	help
+	  Enable sensors for the MP2985.
+
+config MP2985_VOUT
+	bool "MP2985 Voltage output"
+	default y
+	depends on DT_HAS_MPS_MP2985_VOUT_ENABLED
+	select MFD
+	help
+	  Enable driver for the MP2985 VOUT sensor.
+
+config MP2985_TEMP
+	bool "MP2985 Temperature reading"
+	default y
+	depends on DT_HAS_MPS_MP2985_TEMP_ENABLED
+	select MFD
+	help
+	  Enable driver for the MP2985 TEMP sensor.
+
+config MP2985_IOUT
+	bool "MP2985 Current output"
+	default y
+	depends on DT_HAS_MPS_MP2985_IOUT_ENABLED
+	select MFD
+	help
+	  Enable driver for the MP2985 IOUT sensor.
+

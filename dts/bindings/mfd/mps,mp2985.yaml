@@ -1,0 +1,14 @@
+# Copyright (c) 2025 Silicom Connectivity Solutions, Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+description: Monolithic MP2985 Digital controller PMBus MFD device
+
+compatible: "mps,mp2985"
+
+include: smbus-device.yaml
+
+bus: mp2985
+
+properties:
+  reg:
+    required: true

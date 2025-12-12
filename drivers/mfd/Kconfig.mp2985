@@ -1,0 +1,19 @@
+# Copyright (c) 2025 Silicom Connectivity Solutions, Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+config MFD_MP2985
+	bool "Monolithic Power Systems MP2985 Digital Controller"
+	default y
+	depends on DT_HAS_MPS_MP2985_ENABLED
+	select I2C
+	select SMBUS
+	select PMBUS
+	help
+	  Enable driver for MPS MP2985
+
+config MFD_MP2985_INIT_PRIORITY
+	int "mp2985 MFD initialization priority"
+	default MFD_INIT_PRIORITY
+	depends on MFD_MP2985
+	help
+	  Mult-function device initialization priority for mp2985.
