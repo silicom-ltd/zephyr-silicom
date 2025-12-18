@@ -4,7 +4,7 @@
 config MP2985_SENSOR
 	bool "MP2985 sensors"
 	default y
-	depends on MP2985_TEMP || MP2985_VOUT || MP2985_IOUT
+	depends on MP2985_TEMP || MP2985_VOUT || MP2985_IOUT || MP2985_VIN
 	help
 	  Enable sensors for the MP2985.
 
@@ -32,3 +32,10 @@ config MP2985_IOUT
 	help
 	  Enable driver for the MP2985 IOUT sensor.
 
+config MP2985_VIN
+	bool "MP2985 voltage input"
+	default y
+	depends on DT_HAS_MPS_MP2985_VIN_ENABLED
+	select MFD
+	help
+	  Enable driver for the MP2985 VIN sensor.
