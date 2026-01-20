@@ -91,3 +91,15 @@ int pmbus_read_block_data(const struct smbus_dt_spec *dev, int page, uint8_t reg
 
 	return smbus_block_read(dev->bus, dev->addr, reg, count, val);
 }
+
+int pmbus_write_block_data(const struct smbus_dt_spec *dev, int page, uint8_t reg, uint8_t count, uint8_t *val)
+{
+	int ret;
+
+	ret = pmbus_set_page(dev, page, 0xff);
+
+	if (ret)
+		return ret;
+
+	return smbus_block_write(dev->bus, dev->addr, reg, count, val);
+}
