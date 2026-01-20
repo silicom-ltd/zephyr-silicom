@@ -50,6 +50,7 @@ static int val2data_direct(const struct device *dev, uint16_t val)
 	ret = (ret - b) / m;
 
 	ret *= data->Kr;
+	ret /= 32;
 
 	return ret;
 }
@@ -119,16 +120,16 @@ static int mp2928_vout_init(const struct device *dev)
 
 	LOG_DBG("MFR_VR_CONFIG1: 0x%x", val);
 
-	switch (val & 0xC0) {
+	switch (val & 0xC000) {
 		case 0x0:
 			data->m = 16;
 			data->R = 1;
 			break;
-		case 0x40:
+		case 0x4000:
 			data->m = 2;
 			data->R = 2;
 			break;
-		case 0x80:
+		case 0x8000:
 			data->m = 5;
 			data->R = 2;
 		default:
@@ -137,7 +138,7 @@ static int mp2928_vout_init(const struct device *dev)
 
 	result = mfd_mp2928_read_word(config->mfd, config->page, 0x29, &val);
 	LOG_DBG("VOUT_SCALE_LOOP: 0x%x", val);
-	data->Kr = (val & 0xFF) >> 5;
+	data->Kr = (val & 0xFF);
 
 	mp2928_vout_sample_fetch(dev, SENSOR_CHAN_VOLTAGE);
 

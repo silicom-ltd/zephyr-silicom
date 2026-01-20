@@ -21,7 +21,11 @@ struct mp2985_vout_config {
 
 struct mp2985_vout_data {
 	int voltage;
+	uint8_t mode;
 	int m;
+	int b;
+	int R;
+	int Kr;
 };
 
 /* convert to millivolts */
@@ -30,11 +34,22 @@ static int val2data_vid(const struct device *dev, uint16_t val)
 	struct mp2985_vout_data *data = dev->data;
 
 	int m = data->m;
+	int b = data->b;
+	int R = -(data->R);
 	int ret = (int)val;
 
-	ret *= 1000;
+	R += 3;
+	b *= 1000;
 
-	ret /= m;
+	while (R > 0) {
+		ret *= 10;
+		R--;
+	}
+
+	ret = (ret - b) / m;
+
+	ret *= data->Kr;
+	ret /= 32;
 
 	return ret;
 }
@@ -88,25 +103,51 @@ static int mp2985_vout_init(const struct device *dev)
 {
 	const struct mp2985_vout_config *config = dev->config;
 	struct mp2985_vout_data *data = dev->data;
-	int result;
-	uint16_t val;
+	int ret;
+	uint16_t word_val;
+	uint8_t byte_val;
 
-	if (config->page == 0) {
-		result = mfd_mp2985_read_word(config->mfd, 2, 0x0D, &val);
-		if (val & 0x10) {
-			data->m = 200;
-		} else {
-			data->m = 100;
+	ret = mfd_mp2985_read_byte(config->mfd, config->page, PMBUS_VOUT_MODE, &byte_val);
+
+	if (ret != 0)
+		return -ENOTSUP;
+
+	data->mode = byte_val;
+
+	if (byte_val == 0x21) {
+		if (config->page == 0) {
+			ret = mfd_mp2985_read_word(config->mfd, 2, 0x0D, &word_val);
+			if (word_val & 0x10) {
+				data->m = 200;
+				data->R = 3;
+			} else {
+				data->m = 100;
+				data->R = 3;
+			}
+		}
+		else {
+			ret = mfd_mp2985_read_word(config->mfd, 2, 0x1D, &word_val);
+			if (word_val & 0x8) {
+				data->m = 200;
+				data->R = 3;
+			} else {
+				data->m = 100;
+				data->R = 3;
+			}
 		}
 	}
-	else {
-		result = mfd_mp2985_read_word(config->mfd, 2, 0x1D, &val);
-		if (val & 0x8) {
-			data->m = 200;
-		} else {
-			data->m = 100;
-		}
+	else if (byte_val == 0x40) {
+		data->m = 1;
+		data->R = 0;
 	}
+	else if (byte_val == 0x17) {
+		data->m = 512;
+		data->R = 3;
+	}
+
+	ret = mfd_mp2985_read_word(config->mfd, config->page, PMBUS_VOUT_SCALE_LOOP, &word_val);
+
+	data->Kr = (word_val & 0xFF);
 
 	mp2985_vout_sample_fetch(dev, SENSOR_CHAN_VOLTAGE);
 
