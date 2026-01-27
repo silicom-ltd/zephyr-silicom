@@ -242,7 +242,7 @@ static int smbus_xec_block_write(const struct device *dev, uint16_t periph_addr,
 		{
 			.buf = buf,
 			.len = count,
-			.flags = 0,
+			.flags = I2C_MSG_STOP,
 		},
 	};
 
