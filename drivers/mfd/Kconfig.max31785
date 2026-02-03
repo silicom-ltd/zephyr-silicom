@@ -1,0 +1,12 @@
+# Copyright (c) 2026 Silicom Connectivity Solutions, Ltd.
+# SPDX -License-Identifier: Apache-2.0
+
+config MFD_MAX31785
+	bool "MAX31785 MFD device driver"
+	default y
+	depends on DT_HAS_MAXIM_MAX31785_ENABLED
+	select I2C
+	select SMBUS
+	select PMBUS
+	help
+	  Enable the Maxim MAX21785 MFD device driver

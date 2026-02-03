@@ -1,0 +1,26 @@
+# Copyright (c) 2026 Silicom Connectivity Solutions, Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+description: Maxim MAX31785
+
+compatible: "maxim,max31785"
+
+include: smbus-device.yaml
+
+properties:
+  reg:
+    required: true
+
+  reset-gpios:
+    type: phandle-array
+    description: |
+      Reset# pin
+      This pin is defined if there is a gpio on the microcontroller that needs
+      to be controlled to take the device out of reset.
+
+  ctrl-gpios:
+    type: phandle-array
+    description: |
+      Control pin
+      This pin is defined if there is a gpio on the microcontroller that needs
+      to be controlled to set the device to normal mode.  (Fans not 100%)

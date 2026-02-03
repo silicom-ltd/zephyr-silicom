@@ -102,4 +102,6 @@ source "drivers/pwm/Kconfig.nxp_s32_emios"
 
 source "drivers/pwm/Kconfig.emc230x"
 
+source "drivers/pwm/Kconfig.max31785"
+
 endif # PWM

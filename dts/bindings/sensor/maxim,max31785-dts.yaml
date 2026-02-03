@@ -1,0 +1,13 @@
+# Copyright (c) 2026 Silicom Connectivity Solutions, Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+description: Maxim MAX31785 Digital Temperature Sensor
+
+compatible: "maxim,max31785-dts"
+
+child-binding:
+  properties:
+    fans:
+      type: phandles
+      description: |
+        List of Fan phandles that this DTS affects.

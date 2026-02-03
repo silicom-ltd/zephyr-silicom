@@ -42,6 +42,7 @@ zephyr_library_sources_ifdef(CONFIG_PWM_MCUX_CTIMER	pwm_mcux_ctimer.c)
 zephyr_library_sources_ifdef(CONFIG_PWM_NUMAKER		pwm_numaker.c)
 zephyr_library_sources_ifdef(CONFIG_PWM_NXP_S32_EMIOS pwm_nxp_s32_emios.c)
 zephyr_library_sources_ifdef(CONFIG_PWM_EMC230X         pwm_emc230x.c)
+zephyr_library_sources_ifdef(CONFIG_FAN_MAX31785	pwm_max31785.c)
 
 zephyr_library_sources_ifdef(CONFIG_USERSPACE   pwm_handlers.c)
 zephyr_library_sources_ifdef(CONFIG_PWM_CAPTURE pwm_capture.c)

@@ -1,0 +1,31 @@
+# Copyright (c) 2026 Silicom Connectivity Solutions, Ltd.
+# SPDX -License-Identifier: Apache-2.0
+
+config FAN_MAX31785
+	bool "MAX31785 Fan control device driver"
+	default y
+	depends on DT_HAS_MAXIM_MAX31785_FAN_ENABLED
+	select MFD
+	select I2C
+	select SMBUS
+	select PMBUS
+	help
+	  Enable the Maxim MAX21785 fan control device driver
+
+if FAN_MAX31785
+
+config FAN_MAXIM_MAX31785_COMMON_INIT_PRIORITY
+	int "MAX31785 fan driver init priority (common part)"
+	default 86
+	help
+	  Init priority for the Maxim MAX31785 fan driver
+	  (common part).  It must be greater than I2C and MFD init priority.
+
+config FAN_MAXIM_MAX31785_INIT_PRIORITY
+	int "MAX31785 fan driver init priority"
+	default 87
+	help
+	  Init priority for the Maxim MAX31785 fan driver. It must be
+	  greater than FAN_MAXIM_MAX31785_COMMON_INIT_PRIORITY
+
+endif
