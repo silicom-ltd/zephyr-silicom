@@ -14,8 +14,6 @@
 
 LOG_MODULE_REGISTER(MP2985_IOUT, CONFIG_SENSOR_LOG_LEVEL);
 
-#define IOUT_CAL_GAIN		0x38
-
 struct mp2985_iout_config {
 	const struct device *mfd;
 	uint8_t page;
@@ -23,13 +21,11 @@ struct mp2985_iout_config {
 
 struct mp2985_iout_data {
 	int current;
-	int m;
 };
 
 /* convert to mwatts */
 static int val2data_linear(const struct device *dev, uint16_t val)
 {
-	struct mp2985_iout_data *data = dev->data;
 	int exp = (int16_t)val >> 11;
 	int ret = ((int16_t)(val & 0x7FF) << 5) >> 5;
 
@@ -41,7 +37,7 @@ static int val2data_linear(const struct device *dev, uint16_t val)
 		ret <<= exp;
 	}	
 
-	return ret / data->m;
+	return ret;
 }
 
 static int mp2985_iout_sample_fetch(const struct device *dev, enum sensor_channel chan)
@@ -63,7 +59,7 @@ static int mp2985_iout_sample_fetch(const struct device *dev, enum sensor_channe
 
 	result = val2data_linear(dev, val);
 
-	LOG_DBG("%s iout: %dmV", dev->name, result);
+	LOG_DBG("%s iout: %dmA", dev->name, result);
 
 	data->current = result;
 
@@ -91,28 +87,6 @@ static struct sensor_driver_api mp2985_iout_api = {
 
 static int mp2985_iout_init(const struct device *dev)
 {
-	const struct mp2985_iout_config *config = dev->config;
-	struct mp2985_iout_data *data = dev->data;
-	int result;
-	uint16_t val;
-
-	result  = mfd_mp2985_read_word(config->mfd, 0, IOUT_CAL_GAIN, &val);
-
-	LOG_DBG("IOUT_CAL_GAIN: 0x%x", val);
-
-	val = (val & 0xC0) >> 14;
-	switch (val) {
-		case 0x0:
-			data->m = 4;
-			break;
-		case 0x1:
-			data->m = 8;
-			break;
-		default:
-			data->m = 16;
-			break;
-	}
-
 	mp2985_iout_sample_fetch(dev, SENSOR_CHAN_CURRENT);
 
 	return 0;
