@@ -1,0 +1,56 @@
+# Copyright (c) 2026 Silicom Connectivity Solutions, Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+description: Maxim MAX31785 Fan
+
+compatible: "maxim,max31785-fan"
+
+include: base.yaml
+
+child-binding:
+  properties:
+    page:
+      required: true
+      type: int
+
+    mode:
+      required: true
+      type: string
+      enum:
+        - FAN_AUTO_PWM
+        - FAN_AUTO_RPM
+        - FAN_MANUAL_PWM
+        - FAN_MANUAL_RPM
+    ppr:
+      required: true
+      type: int
+      description: |
+        Tach Pulses Per Revolution.
+      default: 2
+      enum: [1, 2, 3, 4]
+
+    locked-rotor-en:
+      required: false
+      type: int
+      description: |
+        Fan outputs locked rotor indicator or tach output. 1 = Locked Rotor, default is tach output.
+      default: 0
+      enum: [0, 1]
+
+    fan-speeds:
+      required: false
+      type: array
+      description: |
+        Array of speeds per temperature for this fan.
+
+    fan-temps:
+      required: false
+      type: array
+      description: |
+        Array of temperatures per speed for this fan.
+
+    initial-setting:
+      required: false
+      type: int
+      description: |
+        Initial setting of fan, either PWM % or RPM, depending on mode setting

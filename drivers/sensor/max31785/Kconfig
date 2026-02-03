@@ -1,0 +1,33 @@
+# MAX31785 temperature sensor configuration options
+
+# Copyright (c) 2026 Silicom Connectivity Solutions, Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+config MAX31785_DTS
+	bool "MAX31785 sensor"
+	default y
+	depends on DT_HAS_MAXIM_MAX31785_DTS_ENABLED
+	select I2C
+	select SMBUS
+	select PMBUS
+	select MFD
+	help
+	  Enable driver for MAX31785 temperature sensor.
+
+if MAX31785_DTS
+
+config DTS_MAXIM_MAX31785_COMMON_INIT_PRIORITY
+	int "MAX31785 temp sensor init priority (common part)"
+	default 91
+	help
+	  Init priority for the Maxim MAX31785 temp driver
+	  (common part).  It must be greater than SENSOR init priority.
+
+config DTS_MAXIM_MAX31785_INIT_PRIORITY
+	int "MAX31785 temp sensor init priority"
+	default 92
+	help
+	  Init priority for the Maxim MAX31785 temp driver.  It must be
+	  greater than DT_MAXIM_MAX31785_COMMON_INIT_PRIORITY.
+
+endif
