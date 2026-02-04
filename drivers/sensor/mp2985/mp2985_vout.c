@@ -29,7 +29,7 @@ struct mp2985_vout_data {
 };
 
 /* convert to millivolts */
-static int val2data_vid(const struct device *dev, uint16_t val)
+static int val2data(const struct device *dev, uint16_t val)
 {
 	struct mp2985_vout_data *data = dev->data;
 
@@ -48,8 +48,10 @@ static int val2data_vid(const struct device *dev, uint16_t val)
 
 	ret = (ret - b) / m;
 
-	ret *= data->Kr;
-	ret /= 32;
+	if (data->Kr != 32) {
+		ret *= data->Kr;
+		ret /= 32;
+	}
 
 	return ret;
 }
@@ -71,7 +73,7 @@ static int mp2985_vout_sample_fetch(const struct device *dev, enum sensor_channe
 		return result;
 	}
 
-	result = val2data_vid(dev, val);
+	result = val2data(dev, val);
 
 	LOG_DBG("%s vout: %dmV", dev->name, result);
 
@@ -112,6 +114,8 @@ static int mp2985_vout_init(const struct device *dev)
 	if (ret != 0)
 		return -ENOTSUP;
 
+	LOG_DBG("MP2985 VOUT_MODE: 0x%x", byte_val);
+
 	data->mode = byte_val;
 
 	if (byte_val == 0x21) {
@@ -138,7 +142,7 @@ static int mp2985_vout_init(const struct device *dev)
 	}
 	else if (byte_val == 0x40) {
 		data->m = 1;
-		data->R = 0;
+		data->R = 3;
 	}
 	else if (byte_val == 0x17) {
 		data->m = 512;
@@ -147,7 +151,8 @@ static int mp2985_vout_init(const struct device *dev)
 
 	ret = mfd_mp2985_read_word(config->mfd, config->page, PMBUS_VOUT_SCALE_LOOP, &word_val);
 
-	data->Kr = (word_val & 0xFF);
+	LOG_DBG("MP2985 VOUT_SCALE_LOOP: 0x%x", word_val);
+	data->Kr = word_val;
 
 	mp2985_vout_sample_fetch(dev, SENSOR_CHAN_VOLTAGE);
 
