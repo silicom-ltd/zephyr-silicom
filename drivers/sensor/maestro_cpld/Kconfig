@@ -1,0 +1,17 @@
+# Copyright (c) 2026 Silicom Connectivity Solutions, Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+config MAESTRO_CPLD
+	bool "Maestro CPLD sensors"
+	default y
+	depends on MAESTRO_SWITCH_TEMP
+	help
+	  Enable sensors for the Maestro CPLD.
+
+config MAESTRO_SWITCH_TEMP
+	bool "Maestro switch Temperature reading"
+	default y
+	depends on DT_HAS_MAESTRO_SWITCH_TEMP_ENABLED
+	select MFD
+	help
+	  Enable driver for the Maestro switch TEMP sensor.
