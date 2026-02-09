@@ -1,0 +1,8 @@
+# Copyright (c) 2026 Silicom Connectivity Solutions, Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+description: TEMP measurement of Maestro switch
+
+compatible: "maestro-switch-temp"
+
+include: [i2c-device.yaml, sensor-device.yaml]
