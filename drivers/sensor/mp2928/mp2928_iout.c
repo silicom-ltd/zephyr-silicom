@@ -12,7 +12,8 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/sys/byteorder.h>
 
-LOG_MODULE_REGISTER(MP2928_IOUT, CONFIG_SENSOR_LOG_LEVEL);
+//LOG_MODULE_REGISTER(MP2928_IOUT, CONFIG_SENSOR_LOG_LEVEL);
+LOG_MODULE_REGISTER(MP2928_IOUT, 4);
 
 #define MFR_VR_CONFIG1		0xC1
 
@@ -23,30 +24,21 @@ struct mp2928_iout_config {
 
 struct mp2928_iout_data {
 	int current;
-	int m;
-	int b;
-	int R;
 };
 
 /* convert to millamps */
-static int val2data_direct(const struct device *dev, uint16_t val)
+static int val2data_linear(const struct device *dev, uint16_t val)
 {
-	struct mp2928_iout_data *data = dev->data;
+	int exp = (int16_t)val >> 11;
+	int ret = ((int16_t)(val & 0x7FF) << 5) >> 5;
 
-	int m = data->m;
-	int b = data->b;
-	int R = -(data->R);
-	int ret = (int)val;
+	ret *= 1000;
 
-	R += 3;
-	b *= 1000;
-	
-	while (R > 0) {
-		ret *= 10;
-		R--;
-	}
-
-	ret = (ret - b) / m;
+	if (exp < 0) {
+		ret >>= -exp;
+	} else {
+		ret <<= exp;
+	}	
 
 	return ret;
 }
@@ -68,11 +60,9 @@ static int mp2928_iout_sample_fetch(const struct device *dev, enum sensor_channe
 		return result;
 	}
 
-	val &= 0x7FF;
+	result = val2data_linear(dev, val);
 
-	result = val2data_direct(dev, val);
-
-	LOG_DBG("%s iout: %dmV", dev->name, result);
+	LOG_DBG("%s iout: %dmA", dev->name, result);
 
 	data->current = result;
 
@@ -101,27 +91,12 @@ static struct sensor_driver_api mp2928_iout_api = {
 static int mp2928_iout_init(const struct device *dev)
 {
 	const struct mp2928_iout_config *config = dev->config;
-	struct mp2928_iout_data *data = dev->data;
 	int result;
 	uint16_t val;
 
 	result  = mfd_mp2928_read_word(config->mfd, 0, MFR_VR_CONFIG1, &val);
 
 	LOG_DBG("MFR_VR_CONFIG1: 0x%x", val);
-
-	val = !!(val & (0x8 << config->page));
-	switch (val) {
-		case 0x0:
-			data->m = 2;
-			data->R = 1;
-			break;
-		case 0x1:
-			data->m = 4;
-			data->R = 2;
-			break;
-		default:
-			break;
-	}
 
 	mp2928_iout_sample_fetch(dev, SENSOR_CHAN_CURRENT);
 
