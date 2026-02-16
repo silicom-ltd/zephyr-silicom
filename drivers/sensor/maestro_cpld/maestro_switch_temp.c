@@ -35,7 +35,7 @@ static int maestro_switch_temp_sample_fetch(const struct device *dev, enum senso
 		return -ENOTSUP;
 	}
 
-	result = i2c_reg_read_byte_dt(&config->i2c, 0x17, &val);
+	result = i2c_reg_read_byte_dt(&config->i2c, 0x1, &val);
 
 	if (result != 0) {
 		return result;
@@ -74,8 +74,6 @@ static int maestro_switch_temp_init(const struct device *dev)
 	const struct maestro_switch_temp_config *config = dev->config;
 	int result;
 	uint8_t byte_value;
-
-	result = i2c_reg_write_byte_dt(&config->i2c, 0x17, 5);
 
 	result = i2c_reg_read_byte_dt(&config->i2c, 0xC, &byte_value);
 
