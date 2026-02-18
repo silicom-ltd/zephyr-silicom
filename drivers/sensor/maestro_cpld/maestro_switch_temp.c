@@ -41,11 +41,11 @@ static int maestro_switch_temp_sample_fetch(const struct device *dev, enum senso
 		return result;
 	}
 
-	result *= 1000;
+	result = val * 1000;
 
-	LOG_DBG("%s Temp: %dmC", dev->name, val);
+	LOG_DBG("%s Temp: %dmC", dev->name, result);
 
-	data->temperature = val;
+	data->temperature = result;
 
 	return 0;
 }
