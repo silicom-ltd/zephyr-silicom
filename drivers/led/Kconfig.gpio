@@ -7,3 +7,12 @@ config LED_GPIO
 	depends on GPIO && DT_HAS_GPIO_LEDS_ENABLED
 	help
 	  Enable driver for GPIO LEDs.
+
+if LED_GPIO
+config LED_GPIO_BLINK
+	bool "Blink GPIO LED with timer"
+	default n
+	depends on LED_GPIO
+	help
+	  Use a kernel timer to blink GPIO led
+endif
