@@ -22,8 +22,38 @@ LOG_MODULE_REGISTER(led_gpio, CONFIG_LED_LOG_LEVEL);
 struct led_gpio_config {
 	size_t num_leds;
 	const struct gpio_dt_spec *led;
+	struct k_timer *blinker;
 };
 
+#ifdef CONFIG_LED_GPIO_BLINK
+static void led_gpio_blink_expire(struct k_timer *timer_id)
+{
+	gpio_pin_toggle_dt(timer_id->user_data);
+}
+
+static void led_gpio_blink_stop(struct k_timer *timer_id)
+{
+	k_timer_stop(timer_id);
+}
+
+static int led_gpio_blink(const struct device *dev, uint32_t led,
+			  uint32_t delay_on, uint32_t delay_off)
+{
+	const struct led_gpio_config *config = dev->config;
+	const struct gpio_dt_spec *led_gpio;
+
+	led_gpio = &config->led[led];
+
+	k_timer_user_data_set(config->blinker, (void *)led_gpio);
+
+	gpio_pin_toggle_dt(led_gpio);
+
+	k_timer_start(config->blinker, K_MSEC(delay_on), K_MSEC(delay_off));
+
+	return 0;
+}
+#endif
+	
 static int led_gpio_set_brightness(const struct device *dev, uint32_t led, uint8_t value)
 {
 
@@ -41,11 +71,19 @@ static int led_gpio_set_brightness(const struct device *dev, uint32_t led, uint8
 
 static int led_gpio_on(const struct device *dev, uint32_t led)
 {
+#ifdef CONFIG_LED_GPIO_BLINK
+	const struct led_gpio_config *config = dev->config;
+	led_gpio_blink_stop(config->blinker);
+#endif
 	return led_gpio_set_brightness(dev, led, 100);
 }
 
 static int led_gpio_off(const struct device *dev, uint32_t led)
 {
+#ifdef CONFIG_LED_GPIO_BLINK
+	const struct led_gpio_config *config = dev->config;
+	led_gpio_blink_stop(config->blinker);
+#endif
 	return led_gpio_set_brightness(dev, led, 0);
 }
 
@@ -81,8 +119,34 @@ static const struct led_driver_api led_gpio_api = {
 	.on		= led_gpio_on,
 	.off		= led_gpio_off,
 	.set_brightness	= led_gpio_set_brightness,
+#ifdef CONFIG_LED_GPIO_BLINK
+	.blink		= led_gpio_blink,
+#endif
 };
 
+#ifdef CONFIG_LED_GPIO_BLINK
+#define LED_GPIO_DEVICE(i)					\
+								\
+static const struct gpio_dt_spec gpio_dt_spec_##i[] = {		\
+	DT_INST_FOREACH_CHILD_SEP_VARGS(i, GPIO_DT_SPEC_GET, (,), gpios) \
+};								\
+								\
+K_TIMER_DEFINE(gpio_blink_##i, led_gpio_blink_expire, led_gpio_blink_stop); \
+								\
+static const struct led_gpio_config led_gpio_config_##i = {	\
+	.num_leds	= ARRAY_SIZE(gpio_dt_spec_##i),		\
+	.led		= gpio_dt_spec_##i,			\
+	.blinker	= &gpio_blink_##i,			\
+};								\
+								\
+DEVICE_DT_INST_DEFINE(i, &led_gpio_init, NULL,			\
+		      NULL, &led_gpio_config_##i,		\
+		      POST_KERNEL, CONFIG_LED_INIT_PRIORITY,	\
+		      &led_gpio_api);
+
+DT_INST_FOREACH_STATUS_OKAY(LED_GPIO_DEVICE)
+
+#else
 #define LED_GPIO_DEVICE(i)					\
 								\
 static const struct gpio_dt_spec gpio_dt_spec_##i[] = {		\
@@ -90,7 +154,7 @@ static const struct gpio_dt_spec gpio_dt_spec_##i[] = {		\
 };								\
 								\
 static const struct led_gpio_config led_gpio_config_##i = {	\
-	.num_leds	= ARRAY_SIZE(gpio_dt_spec_##i),	\
+	.num_leds	= ARRAY_SIZE(gpio_dt_spec_##i),		\
 	.led		= gpio_dt_spec_##i,			\
 };								\
 								\
@@ -100,3 +164,4 @@ DEVICE_DT_INST_DEFINE(i, &led_gpio_init, NULL,			\
 		      &led_gpio_api);
 
 DT_INST_FOREACH_STATUS_OKAY(LED_GPIO_DEVICE)
+#endif
