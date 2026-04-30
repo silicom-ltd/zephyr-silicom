@@ -286,14 +286,6 @@
 		pinmux = < MCHP_XEC_PINMUX(030, MCHP_AF2) >;
 	};
 
-	/omit-if-no-ref/ i2c11_scl_gpio062: i2c11_scl_gpio062 {
-		pinmux = < MCHP_XEC_PINMUX(062, MCHP_AF2) >;
-	};
-
-	/omit-if-no-ref/ i2c11_sda_gpio000: i2c11_sda_gpio000 {
-		pinmux = < MCHP_XEC_PINMUX(00, MCHP_AF3) >;
-	};
-
 	/omit-if-no-ref/ i2c12_scl_gpio027: i2c12_scl_gpio027 {
 		pinmux = < MCHP_XEC_PINMUX(027, MCHP_AF3) >;
 	};
