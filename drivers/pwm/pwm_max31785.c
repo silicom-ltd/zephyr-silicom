@@ -36,10 +36,14 @@ enum max31785_fan_mode {
 	FAN_MANUAL_RPM,
 };
 
-LOG_MODULE_REGISTER(maxim_max31785_fan, 4); //CONFIG_PWM_LOG_LEVEL);
+LOG_MODULE_REGISTER(maxim_max31785_fan, CONFIG_PWM_LOG_LEVEL);
 
 struct fan_max31785_common_config {
 	const struct smbus_dt_spec smbus;
+};
+
+struct fan_max31785_common_data {
+	struct k_mutex lock;
 };
 
 #define MAX31785_FAN_MODE_PWM		0
@@ -127,6 +131,61 @@ struct fan_max31785_config {
 	LOG_INSTANCE_PTR_DECLARE(log);
 };
 
+#if 0
+static int max31785_get_cycles_per_sec(const struct device *dev, uint32_t channel, uint64_t *cycles)
+{
+	__unused const struct fan_max31785_config *config = dev->config;
+	__unused struct max31785_data *data = dev->data;
+	__unused uint16_t value;
+
+	__unused int result;
+
+	return 0;
+}
+
+static const struct pwm_driver_api max31785_pwm_api = {
+	.set_cycles = max31785_set_cycles,
+	.get_cycles_per_sec = max31785_get_cycles_per_sec,
+};
+#endif
+
+static int fan_max31785_speed_get(const struct device *dev, struct sensor_value *value)
+{
+	const struct fan_max31785_config *config = dev->config;
+
+	uint16_t val;
+	int ret;
+
+	ret = pmbus_read_word_data(&config->smbus, config->page, 0, PMBUS_READ_FAN_SPEED_1, &val);
+
+	if (ret) return -EINVAL;
+
+	value->val1 = val;
+
+	return 0;
+}
+
+static int fan_max31785_cycles_set(const struct device *dev, unsigned int cycles)
+{
+	const struct fan_max31785_config *config = dev->config;
+	int ret = 0;
+
+	if (config->mode == FAN_MANUAL_PWM) {
+		if (cycles > 100) return -EINVAL;
+		ret = pmbus_write_word_data(&config->smbus, config->page, PMBUS_FAN_COMMAND_1, cycles*100);
+	}
+
+	if (config->mode == FAN_MANUAL_RPM) {
+		if (cycles > 0x7FFF) return -EINVAL;
+		ret = pmbus_write_word_data(&config->smbus, config->page, PMBUS_FAN_COMMAND_1, cycles);
+	}
+
+	if (ret) return -EINVAL;
+
+	return 0;
+}
+
+#if 0
 static int fan_max31785_speed_sample_fetch(const struct device *dev, enum sensor_channel)
 {
 	const struct fan_max31785_config *config = dev->config;
@@ -155,10 +214,17 @@ static int fan_max31785_speed_channel_get(const struct device *dev, enum sensor_
 	return 0;
 }
 
+#endif
+static const struct fan_parent_driver_api fan_api = {
+	.get_speed = fan_max31785_speed_get,
+	.set_cycles = fan_max31785_cycles_set,
+};
+#if 0
 static const struct sensor_driver_api fan_api = {
 	.sample_fetch = fan_max31785_speed_sample_fetch,
 	.channel_get = fan_max31785_speed_channel_get,
 };
+#endif
 	
 static int fan_max31785_init(const struct device *dev)
 {
@@ -171,11 +237,11 @@ static int fan_max31785_init(const struct device *dev)
 	ret = pmbus_write_word_data(&config->smbus, config->page, MFR_FAN_CONFIG, config->fan_config.raw);
 
 	if (ret) {
-		LOG_DBG("cfg register write failed");
+		LOG_INST_DBG(config->log, "cfg register write failed");
 	}	
 
 	if (ret) {
-		LOG_DBG("fan register write failed");
+		LOG_INST_DBG(config->log, "fan register write failed");
 	}	
 	
 	if ((config->mode == FAN_AUTO_PWM) || (config->mode == FAN_AUTO_RPM)) {
@@ -189,18 +255,23 @@ static int fan_max31785_init(const struct device *dev)
 		ret = pmbus_write_block_data(&config->smbus, config->page, MFR_FAN_LUT, 32, (uint8_t *)fan_lut);
 
 		if (ret)
-			LOG_DBG("MAX31785 fan write lut failed");
+			LOG_INST_DBG(config->log, "MAX31785 fan write lut failed");
 
 		ret = pmbus_write_word_data(&config->smbus, config->page, PMBUS_FAN_COMMAND_1, 0xFFFF);
 
 		if (ret)
-			LOG_DBG("MAX31785 FAN_COMMAND_1 write failed");
+			LOG_INST_DBG(config->log, "MAX31785 FAN_COMMAND_1 write failed");
 
 	}
 	else if (config->initial_setting) {
 			ret = pmbus_write_word_data(&config->smbus, config->page, PMBUS_FAN_COMMAND_1, config->initial_setting);
+			if (ret)
+				LOG_INST_DBG(config->log, "MAX31785 FAN_COMMAND_1 manual write failed");
+			else
+				LOG_INST_DBG(config->log, "MAX31785 FAN_COMMAND_1 manual write %d", config->initial_setting);
 	}
 
+	LOG_INST_DBG(config->log, "fan mode: 0x%x",config->mode);
 	switch (config->mode) {
 		case FAN_AUTO_RPM:
 		case FAN_MANUAL_RPM:
@@ -208,10 +279,11 @@ static int fan_max31785_init(const struct device *dev)
 			ret = pmbus_write_byte_data(&config->smbus, config->page, PMBUS_FAN_CONFIG_12, config->fan.raw | (1 << 6));
 			break;
 		default:
+			LOG_INST_DBG(config->log, "fan reg: 0x%x",config->fan.raw);
 			ret = pmbus_write_byte_data(&config->smbus, config->page, PMBUS_FAN_CONFIG_12, config->fan.raw);
 	}
 	if (ret)
-			LOG_DBG("MAX31785 FAN_COMMAND_1 write failed");
+			LOG_INST_DBG(config->log, "MAX31785 FAN_COMMAND_1 write failed");
 
 	return ret;
 }
@@ -219,6 +291,9 @@ static int fan_max31785_init(const struct device *dev)
 static int fan_max31785_common_init(const struct device *dev)
 {
 	__unused const struct fan_max31785_common_config *config = dev->config;
+	struct fan_max31785_common_data *data = dev->data;
+
+	k_mutex_init(&data->lock);
 
 	return 0;
 }
