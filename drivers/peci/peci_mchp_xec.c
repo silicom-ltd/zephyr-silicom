@@ -280,7 +280,7 @@ static int peci_xec_write(const struct device *dev, struct peci_msg *msg)
 
 	/* Wait for transmission to complete */
 #ifdef CONFIG_PECI_INTERRUPT_DRIVEN
-	if (k_sem_take(&data->tx_lock, PECI_IO_DELAY * tx_buf->len)) {
+	if (k_sem_take(&data->tx_lock, K_TICKS(PECI_IO_DELAY * tx_buf->len))) {
 		return -ETIMEDOUT;
 	}
 #else
@@ -438,6 +438,7 @@ static int peci_xec_transfer(const struct device *dev, struct peci_msg *msg)
 #ifdef CONFIG_PM_DEVICE
 	peci_xec_pm_policy_state_lock_put(data, PECI_PM_POLICY_FLAG);
 #endif
+
 	return ret;
 }
 
@@ -485,7 +486,7 @@ static int peci_xec_pm_action(const struct device *dev, enum pm_device_action ac
 static void peci_xec_isr(const void *arg)
 {
 	const struct device *dev = arg;
-	struct peci_xec_config * const cfg = dev->config;
+	const struct peci_xec_config * cfg = dev->config;
 	struct peci_xec_data * const data = dev->data;
 	struct peci_regs * const regs = cfg->regs;
 	uint8_t peci_error = regs->ERROR;
@@ -529,6 +530,7 @@ static int peci_xec_init(const struct device *dev)
 	}
 
 #ifdef CONFIG_PECI_INTERRUPT_DRIVEN
+	struct peci_xec_data * const data = dev->data;
 	k_sem_init(&data->tx_lock, 0, 1);
 #endif
 
