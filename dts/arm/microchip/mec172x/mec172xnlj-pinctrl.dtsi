@@ -50,22 +50,6 @@
 		pinmux = < MCHP_XEC_PINMUX(0231, MCHP_AF1) >;
 	};
 
-	/omit-if-no-ref/ i2c09_scl_gpio146: i2c09_scl_gpio146 {
-		pinmux = < MCHP_XEC_PINMUX(0146, MCHP_AF1) >;
-	};
-
-	/omit-if-no-ref/ i2c09_sda_gpio145: i2c09_sda_gpio145 {
-		pinmux = < MCHP_XEC_PINMUX(0145, MCHP_AF1) >;
-	};
-
-	/omit-if-no-ref/ i2c10_scl_gpio107: i2c10_scl_gpio107 {
-		pinmux = < MCHP_XEC_PINMUX(0107, MCHP_AF1) >;
-	};
-
-	/omit-if-no-ref/ i2c10_sda_gpio030: i2c10_sda_gpio030 {
-		pinmux = < MCHP_XEC_PINMUX(030, MCHP_AF1) >;
-	};
-
 	/omit-if-no-ref/ i2c11_scl_gpio062: i2c11_scl_gpio062 {
 		pinmux = < MCHP_XEC_PINMUX(062, MCHP_AF2) >;
 	};
@@ -80,38 +64,6 @@
 
 	/omit-if-no-ref/ i2c11_sda_alt_gpio005: i2c11_sda_alt_gpio005 {
 		pinmux = < MCHP_XEC_PINMUX(05, MCHP_AF1) >;
-	};
-
-	/omit-if-no-ref/ i2c12_scl_gpio027: i2c12_scl_gpio027 {
-		pinmux = < MCHP_XEC_PINMUX(027, MCHP_AF3) >;
-	};
-
-	/omit-if-no-ref/ i2c12_sda_gpio026: i2c12_sda_gpio026 {
-		pinmux = < MCHP_XEC_PINMUX(026, MCHP_AF3) >;
-	};
-
-	/omit-if-no-ref/ i2c13_scl_gpio065: i2c13_scl_gpio065 {
-		pinmux = < MCHP_XEC_PINMUX(065, MCHP_AF2) >;
-	};
-
-	/omit-if-no-ref/ i2c13_sda_gpio066: i2c13_sda_gpio066 {
-		pinmux = < MCHP_XEC_PINMUX(066, MCHP_AF2) >;
-	};
-
-	/omit-if-no-ref/ i2c14_scl_gpio071: i2c14_scl_gpio071 {
-		pinmux = < MCHP_XEC_PINMUX(071, MCHP_AF2) >;
-	};
-
-	/omit-if-no-ref/ i2c14_sda_gpio070: i2c14_sda_gpio070 {
-		pinmux = < MCHP_XEC_PINMUX(070, MCHP_AF2) >;
-	};
-
-	/omit-if-no-ref/ i2c15_scl_gpio150: i2c15_scl_gpio150 {
-		pinmux = < MCHP_XEC_PINMUX(0150, MCHP_AF1) >;
-	};
-
-	/omit-if-no-ref/ i2c15_sda_gpio147: i2c15_sda_gpio147 {
-		pinmux = < MCHP_XEC_PINMUX(0147, MCHP_AF1) >;
 	};
 
 	/* PWM */
