@@ -84,8 +84,8 @@ static int dts_max31785_temp_channel_get(const struct device *dev, enum sensor_c
 {
 	struct dts_max31785_data *data = dev->data;
 
-	val->val1 = data->temp;
-	val->val2 = 0U;
+	val->val1 = data->temp / 100;
+	val->val2 = (data->temp % 100) * 100;
 
 	return 0;
 }
@@ -162,6 +162,11 @@ static int dts_max31785_common_init(const struct device *dev)
 	DTS_MAX31785_DEFINE_COND(inst, dts2, MAX31785_DTS2)							\
 	DTS_MAX31785_DEFINE_COND(inst, dts3, MAX31785_DTS3)							\
 	DTS_MAX31785_DEFINE_COND(inst, dts4, MAX31785_DTS4)							\
-	DTS_MAX31785_DEFINE_COND(inst, dts5, MAX31785_DTS5)
+	DTS_MAX31785_DEFINE_COND(inst, dts5, MAX31785_DTS5)							\
+	DTS_MAX31785_DEFINE_COND(inst, die,  MAX31785_INTERNAL_TEMP)						\
+	DTS_MAX31785_DEFINE_COND(inst, i2c0, MAX31785_I2C_0)							\
+	DTS_MAX31785_DEFINE_COND(inst, i2c1, MAX31785_I2C_1)							\
+	DTS_MAX31785_DEFINE_COND(inst, i2c2, MAX31785_I2C_2)							\
+	DTS_MAX31785_DEFINE_COND(inst, i2c3, MAX31785_I2C_3)							\
 
 DT_INST_FOREACH_STATUS_OKAY(DTS_MAX31785_DEFINE_ALL);
