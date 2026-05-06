@@ -5,6 +5,8 @@ description: Maxim MAX31785 Digital Temperature Sensor
 
 compatible: "maxim,max31785-dts"
 
+on-bus: max31785
+
 child-binding:
   properties:
     fans:
