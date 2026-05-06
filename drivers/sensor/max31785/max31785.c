@@ -7,6 +7,7 @@
 #define DT_DRV_COMPAT maxim_max31785_dts
 
 #include <zephyr/device.h>
+#include <zephyr/drivers/mfd/max31785.h>
 #include <zephyr/drivers/smbus.h>
 #include <zephyr/drivers/pmbus.h>
 #include <zephyr/drivers/sensor.h>
@@ -33,8 +34,7 @@ enum max31785_pages {
 	MAX31785_I2C_3,
 };
 
-//LOG_MODULE_REGISTER(maxim_max31785_dts, CONFIG_SENSOR_LOG_LEVEL);
-LOG_MODULE_REGISTER(maxim_max31785_dts, 4);
+LOG_MODULE_REGISTER(maxim_max31785_dts, CONFIG_SENSOR_LOG_LEVEL);
 
 struct dts_max31785_common_config {
 	const struct smbus_dt_spec smbus;
@@ -56,6 +56,7 @@ union mfr_temp_sensor_config {
 
 struct dts_max31785_config {
 	const struct smbus_dt_spec smbus;
+	const struct device *mfd;
 	uint8_t page;
 	int nfans;
 	const int *fan_devs;
@@ -70,7 +71,7 @@ static int dts_max31785_temp_sample_fetch(const struct device *dev, enum sensor_
 	uint16_t value;
 	int ret;
 
-	ret = pmbus_read_word_data(&config->smbus, config->page, 0, PMBUS_READ_TEMP_1, &value);
+	ret = mfd_max31785_read_word(config->mfd, config->page, PMBUS_READ_TEMP_1, &value);
 
 	if (ret)
 		return -EINVAL;
@@ -112,7 +113,7 @@ static int dts_max31785_init(const struct device *dev)
 
 	LOG_INST_DBG(config->log, "MAX31785 DTS %s, %d config: 0x%x", dev->name, config->page, dts_config.raw);
 
-	ret = pmbus_write_word_data(&config->smbus, config->page, MFR_TEMP_SENSOR_CONFIG, dts_config.raw);
+	ret = mfd_max31785_write_word(config->mfd, config->page, MFR_TEMP_SENSOR_CONFIG, dts_config.raw);
 	
 	return ret;
 }
@@ -135,6 +136,7 @@ static int dts_max31785_common_init(const struct device *dev)
 	LOG_INSTANCE_REGISTER(_source, node_id, 4);						\
 	static const struct dts_max31785_config dts_config_##id = {						\
 		.smbus = SMBUS_DT_SPEC_GET(DT_GPARENT(node_id)),						\
+		.mfd = DEVICE_DT_GET(DT_BUS(node_id)),							\
 		.page = _source,										\
 		.nfans = ARRAY_SIZE(fans_##id),								\
 		.fan_devs = fans_##id,	\
