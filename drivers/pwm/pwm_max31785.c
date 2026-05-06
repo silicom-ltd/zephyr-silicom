@@ -8,6 +8,7 @@
 
 #include <zephyr/device.h>
 #include <zephyr/drivers/smbus.h>
+#include <zephyr/drivers/mfd/max31785.h>
 #include <zephyr/drivers/pmbus.h>
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/drivers/fan.h>
@@ -121,6 +122,7 @@ struct fan_max31785_data {
 struct fan_max31785_config {
 	uint8_t page;
 	const struct smbus_dt_spec smbus;
+	const struct device *mfd;
 	union mfr_fan_config fan_config;
 	union fan_config_1_2 fan;
 	uint16_t fan_speeds[8];
@@ -156,7 +158,7 @@ static int fan_max31785_speed_get(const struct device *dev, struct sensor_value 
 	uint16_t val;
 	int ret;
 
-	ret = pmbus_read_word_data(&config->smbus, config->page, 0, PMBUS_READ_FAN_SPEED_1, &val);
+	ret = mfd_max31785_read_word(config->mfd, config->page, PMBUS_READ_FAN_SPEED_1, &val);
 
 	if (ret) return -EINVAL;
 
@@ -172,12 +174,12 @@ static int fan_max31785_cycles_set(const struct device *dev, unsigned int cycles
 
 	if (config->mode == FAN_MANUAL_PWM) {
 		if (cycles > 100) return -EINVAL;
-		ret = pmbus_write_word_data(&config->smbus, config->page, PMBUS_FAN_COMMAND_1, cycles*100);
+		ret = mfd_max31785_write_word(config->mfd, config->page, PMBUS_FAN_COMMAND_1, cycles*100);
 	}
 
 	if (config->mode == FAN_MANUAL_RPM) {
 		if (cycles > 0x7FFF) return -EINVAL;
-		ret = pmbus_write_word_data(&config->smbus, config->page, PMBUS_FAN_COMMAND_1, cycles);
+		ret = mfd_max31785_write_word(config->mfd, config->page, PMBUS_FAN_COMMAND_1, cycles);
 	}
 
 	if (ret) return -EINVAL;
@@ -234,11 +236,7 @@ static int fan_max31785_init(const struct device *dev)
 	int ret;
 
 	LOG_INST_DBG(config->log, "cfg reg: 0x%x",config->fan_config.raw);
-	ret = pmbus_write_word_data(&config->smbus, config->page, MFR_FAN_CONFIG, config->fan_config.raw);
-
-	if (ret) {
-		LOG_INST_DBG(config->log, "cfg register write failed");
-	}	
+	ret = mfd_max31785_write_word(config->mfd, config->page, MFR_FAN_CONFIG, config->fan_config.raw);
 
 	if (ret) {
 		LOG_INST_DBG(config->log, "fan register write failed");
@@ -252,19 +250,19 @@ static int fan_max31785_init(const struct device *dev)
 			j++;
 		}
 
-		ret = pmbus_write_block_data(&config->smbus, config->page, MFR_FAN_LUT, 32, (uint8_t *)fan_lut);
+		ret = mfd_max31785_write_block(config->mfd, config->page, MFR_FAN_LUT, 32, (uint8_t *)fan_lut);
 
 		if (ret)
 			LOG_INST_DBG(config->log, "MAX31785 fan write lut failed");
 
-		ret = pmbus_write_word_data(&config->smbus, config->page, PMBUS_FAN_COMMAND_1, 0xFFFF);
+		ret = mfd_max31785_write_word(config->mfd, config->page, PMBUS_FAN_COMMAND_1, 0xFFFF);
 
 		if (ret)
 			LOG_INST_DBG(config->log, "MAX31785 FAN_COMMAND_1 write failed");
 
 	}
 	else if (config->initial_setting) {
-			ret = pmbus_write_word_data(&config->smbus, config->page, PMBUS_FAN_COMMAND_1, config->initial_setting);
+			ret = mfd_max31785_write_word(config->mfd, config->page, PMBUS_FAN_COMMAND_1, config->initial_setting);
 			if (ret)
 				LOG_INST_DBG(config->log, "MAX31785 FAN_COMMAND_1 manual write failed");
 			else
@@ -276,11 +274,11 @@ static int fan_max31785_init(const struct device *dev)
 		case FAN_AUTO_RPM:
 		case FAN_MANUAL_RPM:
 			LOG_INST_DBG(config->log, "fan reg: 0x%x",config->fan.raw|(1<<6));
-			ret = pmbus_write_byte_data(&config->smbus, config->page, PMBUS_FAN_CONFIG_12, config->fan.raw | (1 << 6));
+			ret = mfd_max31785_write_byte(config->mfd, config->page, PMBUS_FAN_CONFIG_12, config->fan.raw | (1 << 6));
 			break;
 		default:
 			LOG_INST_DBG(config->log, "fan reg: 0x%x",config->fan.raw);
-			ret = pmbus_write_byte_data(&config->smbus, config->page, PMBUS_FAN_CONFIG_12, config->fan.raw);
+			ret = mfd_max31785_write_byte(config->mfd, config->page, PMBUS_FAN_CONFIG_12, config->fan.raw);
 	}
 	if (ret)
 			LOG_INST_DBG(config->log, "MAX31785 FAN_COMMAND_1 write failed");
@@ -304,6 +302,7 @@ static int fan_max31785_common_init(const struct device *dev)
 	LOG_INSTANCE_REGISTER(_source, node_id, 4);								\
 	static const struct fan_max31785_config fan_config_##id = {						\
 		.smbus = SMBUS_DT_SPEC_GET(DT_GPARENT(node_id)),						\
+		.mfd = DEVICE_DT_GET(DT_BUS(node_id)),							\
 		.page = _source,										\
 		.fan.ppr = DT_PROP_OR(node_id, ppr, 2) - 1,							\
 		.fan.enable = 1,							 			\
