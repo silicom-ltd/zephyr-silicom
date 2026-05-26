@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: Apache-2.0
+
+description: Zephyr I2C target LM75 
+
+compatible: "zephyr,i2c-target-lm75"
+
+include: ["lm75-base.yaml", i2c-device.yaml]
