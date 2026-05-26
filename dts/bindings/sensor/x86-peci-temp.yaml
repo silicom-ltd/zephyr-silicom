@@ -1,0 +1,15 @@
+# Read CPU temperature via PECI bus
+
+description: |
+  Sensor driver for reading CPU temperature via PECI.
+
+compatible: "x86-peci-temp"
+
+include: "base.yaml"
+
+properties:
+  peci-dev:
+    type: phandle
+    required: true
+    description: |
+      PECI device to read temperature from.
