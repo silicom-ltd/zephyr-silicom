@@ -1,0 +1,9 @@
+# Copyright (c) 2026 Silicom Connectivity Solutions, Ltd
+# SPDX-License-Identifier: Apache-2.0
+
+config X86_PECI_TEMP
+	bool "X86 PECI Temperature Sensor"
+	default y
+	depends on DT_HAS_X86_PECI_TEMP_ENABLED
+	help
+	  Enable driver for PECI temperature sensor on X86 targets.
