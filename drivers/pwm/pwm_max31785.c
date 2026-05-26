@@ -296,6 +296,8 @@ static int fan_max31785_common_init(const struct device *dev)
 	return 0;
 }
 
+
+
 #define FAN_MAX31785_DEFINE(node_id, id, _source)								\
 	static struct fan_max31785_data fan_data_##id;								\
 														\
@@ -307,7 +309,7 @@ static int fan_max31785_common_init(const struct device *dev)
 		.fan.ppr = DT_PROP_OR(node_id, ppr, 2) - 1,							\
 		.fan.enable = 1,							 			\
 		.fan_config.frequency = DT_PROP_OR(node_id, frequency, MAX31785_FAN_PWM_FREQUENCY_25KHZ),	\
-		.fan_config.hyst = DT_PROP_OR(node_id, hyst, MAX31785_FAN_TEMP_HYST_2DEG),			\
+		.fan_config.hyst = DT_PROP_OR(node_id, hyst, MAX31785_FAN_TEMP_HYST_2DEG) - 2,			\
 		.fan_config.tsfo = DT_PROP_OR(node_id, tsfo, MAX31785_FAN_TEMP_FAULT_OVERRIDE_DIS),		\
 		.fan_config.tacho = DT_PROP_OR(node_id, tacho, MAX31785_FAN_TACH_OVERRIDE_DIS),			\
 		.fan_config.ramp_rate = DT_PROP_OR(node_id, ramp_rate, MAX31785_FAN_RAMP_5PERCENT_FAST),	\
