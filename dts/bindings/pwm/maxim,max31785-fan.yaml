@@ -23,6 +23,13 @@ child-binding:
         - FAN_AUTO_RPM
         - FAN_MANUAL_PWM
         - FAN_MANUAL_RPM
+    hyst:
+      type: int
+      description: |
+        Temperature hysteresis for fan control table.
+      default: 2
+      enum: [2, 4, 6, 8]
+
     ppr:
       required: true
       type: int
