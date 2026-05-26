@@ -1,0 +1,19 @@
+# I2C LM75 Target configuration options
+
+# Copyright (c) 2026 Silicom Connectivity Solutions, Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+config I2C_LM75_TARGET
+	bool "I2C Target LM75 driver"
+	default y
+	depends on DT_HAS_ZEPHYR_I2C_TARGET_LM75_ENABLED
+	help
+	  Enable virtual I2C Target LM75 driver
+
+config LM75_TARGET_INIT_PRIORITY
+	int "LM75 target init priority"
+	default 91
+	depends on I2C_LM75_TARGET
+	help
+	  Priority init level of LM75 target, needs to be higher than sensor
+	  init level.
