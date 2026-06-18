@@ -23,7 +23,7 @@ struct mfd_mpq8785_config {
 };
 
 struct mfd_mpq8785_data {
-       struct k_mutex mutex;
+       struct k_mutex lock;
 };
 
 /* write a byte of data to device */
@@ -37,38 +37,64 @@ int mfd_mpq8785_write(const struct device *dev, uint8_t data)
 int mfd_mpq8785_write_byte(const struct device *dev, int page, uint8_t reg, uint8_t byte)
 {
 	const struct mfd_mpq8785_config *config = dev->config;
+	struct mfd_mpq8785_data *data = dev->data;
+	int ret;
 
-	return pmbus_write_byte_data(&config->smbus, page, reg, byte);
+	k_mutex_lock(&data->lock, K_FOREVER);
+	ret = pmbus_write_byte_data(&config->smbus, page, reg, byte);
+	k_mutex_unlock(&data->lock);
+
+	return ret;
 }
 
 
 int mfd_mpq8785_write_word(const struct device *dev, int page, uint8_t reg, uint16_t word)
 {
 	const struct mfd_mpq8785_config *config = dev->config;
+	struct mfd_mpq8785_data *data = dev->data;
+	int ret;
 
-	return pmbus_write_word_data(&config->smbus, page, reg, word);
+	k_mutex_lock(&data->lock, K_FOREVER);
+	ret = pmbus_write_word_data(&config->smbus, page, reg, word);
+	k_mutex_unlock(&data->lock);
+
+	return ret;
 }
 
 int mfd_mpq8785_read_word(const struct device *dev, int page, uint8_t reg, uint16_t *word)
 {
 	const struct mfd_mpq8785_config *config = dev->config;
+	struct mfd_mpq8785_data *data = dev->data;
+	int ret;
 
-	return pmbus_read_word_data(&config->smbus, page, 0, reg, word);
+	k_mutex_lock(&data->lock, K_FOREVER);
+	ret = pmbus_read_word_data(&config->smbus, page, 0, reg, word);
+	k_mutex_unlock(&data->lock);
+
+	return ret;
 }
 
 int mfd_mpq8785_read_byte(const struct device *dev, int page, uint8_t reg, uint8_t *byte)
 {
 	const struct mfd_mpq8785_config *config = dev->config;
+	struct mfd_mpq8785_data *data = dev->data;
+	int ret;
 
-	return pmbus_read_byte_data(&config->smbus, page, reg, byte);
+	k_mutex_lock(&data->lock, K_FOREVER);
+	ret = pmbus_read_byte_data(&config->smbus, page, reg, byte);
+	k_mutex_unlock(&data->lock);
+
+	return ret;
 }
 
 static int mfd_mpq8785_init(const struct device *dev)
 {
 	const struct mfd_mpq8785_config *config = dev->config;
+	struct mfd_mpq8785_data *data = dev->data;
 	int result;
 	uint8_t byte_value;
 
+	k_mutex_init(&data->lock);
 	result = pmbus_read_byte_data(&config->smbus, 0, 0x98, &byte_value);
 
 	if (result != 0) {
