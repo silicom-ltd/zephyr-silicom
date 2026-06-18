@@ -23,52 +23,81 @@ struct mfd_mp2928_config {
 };
 
 struct mfd_mp2928_data {
-       struct k_mutex mutex;
+       struct k_sem acc_lock;
 };
 
 /* write a byte of data to device */
-int mfd_mp2928_write(const struct device *dev, uint8_t data)
+int mfd_mp2928_write(const struct device *dev, uint8_t byte)
 {
 	const struct mfd_mp2928_config *config = dev->config;
+	int ret;
 
-	return pmbus_write_byte(&config->smbus, data, 1);
+	ret = pmbus_write_byte(&config->smbus, byte, 1);
+
+	return ret;
 }
 
 int mfd_mp2928_write_byte(const struct device *dev, int page, uint8_t reg, uint8_t byte)
 {
 	const struct mfd_mp2928_config *config = dev->config;
+	struct mfd_mp2928_data *data = dev->data;
+	int ret;
 
-	return pmbus_write_byte_data(&config->smbus, page, reg, byte);
+	k_sem_take(&data->acc_lock, K_FOREVER);
+	ret = pmbus_write_byte_data(&config->smbus, page, reg, byte);
+	k_sem_give(&data->acc_lock);
+
+	return ret;
 }
 
 
 int mfd_mp2928_write_word(const struct device *dev, int page, uint8_t reg, uint16_t word)
 {
 	const struct mfd_mp2928_config *config = dev->config;
+	struct mfd_mp2928_data *data = dev->data;
+	int ret;
 
-	return pmbus_write_word_data(&config->smbus, page, reg, word);
+	k_sem_take(&data->acc_lock, K_FOREVER);
+	ret = pmbus_write_word_data(&config->smbus, page, reg, word);
+	k_sem_give(&data->acc_lock);
+
+	return ret;
 }
 
 int mfd_mp2928_read_word(const struct device *dev, int page, uint8_t reg, uint16_t *word)
 {
 	const struct mfd_mp2928_config *config = dev->config;
+	struct mfd_mp2928_data *data = dev->data;
+	int ret;
 
-	return pmbus_read_word_data(&config->smbus, page, 0, reg, word);
+	k_sem_take(&data->acc_lock, K_FOREVER);
+	ret = pmbus_read_word_data(&config->smbus, page, 0, reg, word);
+	k_sem_give(&data->acc_lock);
+
+	return ret;
 }
 
 int mfd_mp2928_read_byte(const struct device *dev, int page, uint8_t reg, uint8_t *byte)
 {
 	const struct mfd_mp2928_config *config = dev->config;
+	struct mfd_mp2928_data *data = dev->data;
+	int ret;
 
-	return pmbus_read_byte_data(&config->smbus, page, reg, byte);
+	k_sem_take(&data->acc_lock, K_FOREVER);
+	ret = pmbus_read_byte_data(&config->smbus, page, reg, byte);
+	k_sem_give(&data->acc_lock);
+
+	return ret;
 }
 
 static int mfd_mp2928_init(const struct device *dev)
 {
 	const struct mfd_mp2928_config *config = dev->config;
+	struct mfd_mp2928_data *data = dev->data;
 	int result;
 	uint8_t byte_value;
 
+	k_sem_init(&data->acc_lock, 0, 1);
 	result = pmbus_read_byte_data(&config->smbus, 0, 0x98, &byte_value);
 
 	if (result != 0) {

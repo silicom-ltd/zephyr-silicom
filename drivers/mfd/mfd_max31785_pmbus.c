@@ -25,6 +25,7 @@ struct mfd_max31785_config {
 
 struct mfd_max31785_data {
 	uint32_t last_time;
+	k_sem acc_lock;
 };
 
 #define MAX31785_US_DELAY 9000 
@@ -60,8 +61,10 @@ int mfd_max31785_write_byte(const struct device *dev, int page, uint8_t reg, uin
 	int ret;
 
 	max31785_delay(data);
+	k_sem_take(&data->acc_lock, K_FOREVER);
 	ret = pmbus_write_byte_data(&config->smbus, page, reg, byte);
 	data->last_time = k_cycle_get_32();
+	k_sem_give(&data->acc_lock);
 
 	return ret;
 }
@@ -74,8 +77,10 @@ int mfd_max31785_read_byte(const struct device *dev, int page, uint8_t reg, uint
 	int ret;
 
 	max31785_delay(data);
+	k_sem_take(&data->acc_lock, K_FOREVER);
 	ret = pmbus_read_byte_data(&config->smbus, page, reg, val);
 	data->last_time = k_cycle_get_32();
+	k_sem_give(&data->acc_lock);
 
 	return ret;
 }
@@ -88,8 +93,10 @@ int mfd_max31785_write_word(const struct device *dev, int page, uint8_t reg, uin
 	int ret;
 
 	max31785_delay(data);
+	k_sem_take(&data->acc_lock, K_FOREVER);
 	ret = pmbus_write_word_data(&config->smbus, page, reg, word);
 	data->last_time = k_cycle_get_32();
+	k_sem_give(&data->acc_lock);
 
 	return ret;
 }
@@ -102,8 +109,10 @@ int mfd_max31785_read_word(const struct device *dev, int page, uint8_t reg, uint
 	int ret;
 
 	max31785_delay(data);
+	k_sem_take(&data->acc_lock, K_FOREVER);
 	ret = pmbus_read_word_data(&config->smbus, page, 0, reg, val);
 	data->last_time = k_cycle_get_32();
+	k_sem_give(&data->acc_lock);
 
 	return ret;
 }
@@ -116,8 +125,10 @@ int mfd_max31785_write_block(const struct device *dev, int page, uint8_t reg, ui
 	int ret;
 
 	max31785_delay(data);
+	k_sem_take(&data->acc_lock, K_FOREVER);
 	ret = pmbus_write_block_data(&config->smbus, page, reg, count, buf);
 	data->last_time = k_cycle_get_32();
+	k_sem_give(&data->acc_lock);
 	
 	return ret;
 }
@@ -125,9 +136,11 @@ int mfd_max31785_write_block(const struct device *dev, int page, uint8_t reg, ui
 static int mfd_max31785_init(const struct device *dev)
 {
 	const struct mfd_max31785_config *config = dev->config;
+	struct mfd_max31785_data *data = dev->data;
 	int result;
 	uint16_t word_value;
 
+	k_sem_init(&data->acc_lock, 0, 1);
 	LOG_DBG("Entry to MAX31785: addr 0x%x",config->smbus.addr);
 	if (config->reset_gpio.port) {
 		if (gpio_pin_set_dt(&config->reset_gpio, 1))
