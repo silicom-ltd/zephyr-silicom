@@ -152,7 +152,7 @@ static int x86_peci_temp_sample_fetch(const struct device *dev, enum sensor_chan
 	if (chan != SENSOR_CHAN_ALL && chan != SENSOR_CHAN_DIE_TEMP) {
 		return -ENOTSUP;
 	}
-	peci_get_temp(dev, &data->temp_out);
+	ret = peci_get_temp(dev, &data->temp_out);
 
 	return ret;
 }
@@ -162,7 +162,7 @@ static int x86_peci_temp_channel_get(const struct device *dev, enum sensor_chann
 {
 	struct x86_peci_temp_data *data = dev->data;
 
-	if (chan != SENSOR_CHAN_DIE_TEMP) {
+	if (chan != SENSOR_CHAN_ALL && chan != SENSOR_CHAN_DIE_TEMP) {
 		return -ENOTSUP;
 	}
 
