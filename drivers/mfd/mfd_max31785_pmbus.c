@@ -64,7 +64,7 @@ int mfd_max31785_write_byte(const struct device *dev, int page, uint8_t reg, uin
 	k_mutex_lock(&data->lock, K_FOREVER);
 	ret = pmbus_write_byte_data(&config->smbus, page, reg, byte);
 	data->last_time = k_cycle_get_32();
-	k_mutex_unlock(&data->acc_lock);
+	k_mutex_unlock(&data->lock);
 
 	return ret;
 }
