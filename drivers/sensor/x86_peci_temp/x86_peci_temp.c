@@ -44,6 +44,10 @@ static void peci_ping(struct k_timer *timer)
 	int ret;
 
 	ret = peci_get_tjmax(config->peci_dev, &data->tjmax);
+
+	if (ret != 0)
+		return;
+
 	LOG_DBG("Got TJMax %d",data->tjmax);
 	data->cpu_up = true;
 	k_timer_stop(timer);
@@ -84,9 +88,12 @@ static int peci_get_tjmax(const struct device *dev, uint8_t *tjmax)
 
 		peci_resp = packet.rx_buffer.buf[0];
 		rx_fcs = packet.rx_buffer.buf[PECI_RD_PKG_LEN_DWORD];
-		k_sleep(K_MSEC(1));
+		k_busy_wait(1000);
 		retries--;
 	} while ((peci_resp != PECI_CC_RSP_SUCCESS) && (retries > 0));
+
+	if (peci_resp != PECI_CC_RSP_SUCCESS)
+		return -1;
 
 	*tjmax = packet.rx_buffer.buf[3];
 
@@ -189,7 +196,7 @@ static int x86_peci_temp_init(const struct device *dev)
 
 	k_timer_user_data_set(&peci_check_timer, (void *)dev);
 
-	k_timer_start(&peci_check_timer, K_SECONDS(5), K_NO_WAIT);
+	k_timer_start(&peci_check_timer, K_SECONDS(5), K_SECONDS(1));
 
 	return 0;
 }
