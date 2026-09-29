@@ -29,6 +29,8 @@ struct peci_dev_config {
 };
 
 struct x86_peci_temp_data {
+	const struct device *dev;
+	struct k_work_delayable peci_check_work;
 	bool cpu_up;
 	uint8_t tjmax;
 	float temp_out;
@@ -36,25 +38,29 @@ struct x86_peci_temp_data {
 
 static int peci_get_tjmax(const struct device *dev, uint8_t *tjmax);
 
-static void peci_ping(struct k_timer *timer)
+/*
+ * Runs in the system workqueue thread, not ISR context (unlike the k_timer
+ * expiry function this replaces), so peci_get_tjmax() is free to block.
+ * Reschedules itself once a second until a valid TjMax is read, then stops.
+ */
+static void peci_ping(struct k_work *work)
 {
-	const struct device *dev = timer->user_data;
-	const struct peci_dev_config *config = dev->config;
-	struct x86_peci_temp_data *data = dev->data;
+	struct k_work_delayable *dwork = k_work_delayable_from_work(work);
+	struct x86_peci_temp_data *data =
+		CONTAINER_OF(dwork, struct x86_peci_temp_data, peci_check_work);
+	const struct peci_dev_config *config = data->dev->config;
 	int ret;
 
 	ret = peci_get_tjmax(config->peci_dev, &data->tjmax);
 
-	if (ret != 0)
+	if (ret != 0) {
+		k_work_reschedule(dwork, K_SECONDS(1));
 		return;
+	}
 
 	LOG_DBG("Got TJMax %d",data->tjmax);
 	data->cpu_up = true;
-	k_timer_stop(timer);
-	
 }
-
-K_TIMER_DEFINE(peci_check_timer, peci_ping, NULL);
 
 /* 
  * Utility functions taken directly from samples
@@ -67,7 +73,7 @@ static int peci_get_tjmax(const struct device *dev, uint8_t *tjmax)
 	uint8_t rx_fcs;
 	struct peci_msg packet;
 
-	uint8_t peci_resp_buf[PECI_RD_PKG_LEN_DWORD+1];
+	uint8_t peci_resp_buf[PECI_RD_PKG_LEN_DWORD+1] = {0};
 	uint8_t peci_req_buf[] = { PECI_CONFIGHOSTID,
 				PECI_CONFIGINDEX_TJMAX,
 				PECI_CONFIGPARAM & 0x00FF,
@@ -88,7 +94,7 @@ static int peci_get_tjmax(const struct device *dev, uint8_t *tjmax)
 
 		peci_resp = packet.rx_buffer.buf[0];
 		rx_fcs = packet.rx_buffer.buf[PECI_RD_PKG_LEN_DWORD];
-		k_busy_wait(1000);
+		k_sleep(K_MSEC(1));
 		retries--;
 	} while ((peci_resp != PECI_CC_RSP_SUCCESS) && (retries > 0));
 
@@ -184,6 +190,7 @@ static const struct sensor_driver_api x86_peci_temp_driver_api = {
 static int x86_peci_temp_init(const struct device *dev)
 {
 	const struct peci_dev_config *config = dev->config;
+	struct x86_peci_temp_data *data = dev->data;
 	int ret;
 
 	ret = peci_config(config->peci_dev, 1000u);
@@ -194,9 +201,9 @@ static int x86_peci_temp_init(const struct device *dev)
 
 	peci_enable(config->peci_dev);
 
-	k_timer_user_data_set(&peci_check_timer, (void *)dev);
-
-	k_timer_start(&peci_check_timer, K_SECONDS(5), K_SECONDS(1));
+	data->dev = dev;
+	k_work_init_delayable(&data->peci_check_work, peci_ping);
+	k_work_schedule(&data->peci_check_work, K_SECONDS(5));
 
 	return 0;
 }
