@@ -12,6 +12,7 @@
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/drivers/peci.h>
+#include <zephyr/pm/device.h>
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(x86_peci_temp, CONFIG_SENSOR_LOG_LEVEL);
@@ -32,6 +33,8 @@ struct x86_peci_temp_data {
 	const struct device *dev;
 	struct k_work_delayable peci_check_work;
 	bool cpu_up;
+	/* Set once by peci_ping(); TjMax doesn't change across host power cycles */
+	bool tjmax_valid;
 	uint8_t tjmax;
 	float temp_out;
 };
@@ -59,6 +62,7 @@ static void peci_ping(struct k_work *work)
 	}
 
 	LOG_DBG("Got TJMax %d",data->tjmax);
+	data->tjmax_valid = true;
 	data->cpu_up = true;
 }
 
@@ -208,6 +212,37 @@ static int x86_peci_temp_init(const struct device *dev)
 	return 0;
 }
 
+#ifdef CONFIG_PM_DEVICE
+/*
+ * TURN_OFF/TURN_ON come from the power domain the node sits on (e.g. one that
+ * follows host S0). They only gate reads through cpu_up: peci_ping() runs
+ * only after EC boot, and TjMax isn't re-read on host power cycles. If the
+ * first ping hasn't succeeded yet, it is left to set cpu_up itself.
+ */
+static int x86_peci_temp_pm_action(const struct device *dev,
+				   enum pm_device_action action)
+{
+	struct x86_peci_temp_data *data = dev->data;
+
+	switch (action) {
+	case PM_DEVICE_ACTION_SUSPEND:
+	case PM_DEVICE_ACTION_RESUME:
+		/* No state to save: the bus is idle between transfers */
+		break;
+	case PM_DEVICE_ACTION_TURN_OFF:
+		data->cpu_up = false;
+		break;
+	case PM_DEVICE_ACTION_TURN_ON:
+		data->cpu_up = data->tjmax_valid;
+		break;
+	default:
+		return -ENOTSUP;
+	}
+
+	return 0;
+}
+#endif /* CONFIG_PM_DEVICE */
+
 #define X86_PECI_TEMP_DEFINE(inst)								\
 	static struct x86_peci_temp_data x86_peci_temp_dev_data_##inst;				\
 												\
@@ -215,7 +250,9 @@ static int x86_peci_temp_init(const struct device *dev)
 		.peci_dev = DEVICE_DT_GET(DT_PHANDLE(DT_DRV_INST(inst), peci_dev)),		\
 	};											\
 												\
-	SENSOR_DEVICE_DT_INST_DEFINE(inst, x86_peci_temp_init, NULL,				\
+	PM_DEVICE_DT_INST_DEFINE(inst, x86_peci_temp_pm_action);				\
+												\
+	SENSOR_DEVICE_DT_INST_DEFINE(inst, x86_peci_temp_init, PM_DEVICE_DT_INST_GET(inst),	\
 			      &x86_peci_temp_dev_data_##inst, &peci_dev_config_##inst,		\
 			      POST_KERNEL, CONFIG_SENSOR_INIT_PRIORITY,				\
 			      &x86_peci_temp_driver_api);					\
