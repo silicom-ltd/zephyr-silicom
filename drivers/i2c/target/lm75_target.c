@@ -13,6 +13,7 @@
 #include <string.h>
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/drivers/i2c/target/lm75.h>
+#include <zephyr/pm/device.h>
 
 #define LOG_LEVEL CONFIG_I2C_LOG_LEVEL
 #include <zephyr/logging/log.h>
@@ -21,6 +22,8 @@ LOG_MODULE_REGISTER(i2c_target, 4);
 
 struct i2c_lm75_target_data {
 	struct i2c_target_config config;
+	const struct device *dev;
+	struct k_work_delayable sensor_work;
 	uint32_t reg_ptr;
 	uint8_t lm75_regs[8];
 	bool msb;
@@ -32,11 +35,17 @@ struct i2c_lm75_target_config {
 	const struct device *temp_sensor;
 };
 
-static void get_target_sensor_temp(struct k_timer *timer)
+/*
+ * Runs in the system workqueue thread, not ISR context (unlike the k_timer
+ * expiry function this replaces). Reschedules itself every 500ms to keep
+ * polling the backing sensor for as long as the device exists.
+ */
+static void get_target_sensor_temp(struct k_work *work)
 {
-	const struct device *dev = timer->user_data;
-	const struct i2c_lm75_target_config *config = dev->config;
-	struct i2c_lm75_target_data *data = dev->data;
+	struct k_work_delayable *dwork = k_work_delayable_from_work(work);
+	struct i2c_lm75_target_data *data =
+		CONTAINER_OF(dwork, struct i2c_lm75_target_data, sensor_work);
+	const struct i2c_lm75_target_config *config = data->dev->config;
 	struct sensor_value temp;
 
 	int rounded;
@@ -67,9 +76,9 @@ static void get_target_sensor_temp(struct k_timer *timer)
 //	data->lm75_regs[1] = temp.val2 < 5000 ? 0 : 0x80;
 
 	LOG_DBG("lm75 target sensor read %d.%d, bitmask = 0x%08x",temp.val1, temp.val2, bitmask);
-}
 
-K_TIMER_DEFINE(sensor_timer, get_target_sensor_temp, NULL);
+	k_work_reschedule(dwork, K_MSEC(500));
+}
 
 static int lm75_target_write_requested(struct i2c_target_config *config)
 {
@@ -219,11 +228,42 @@ static int i2c_lm75_target_init(const struct device *dev)
 		LOG_ERR(" register failed");
 	}
 
-	k_timer_user_data_set(&sensor_timer, (void *)dev);
-	k_timer_start(&sensor_timer, K_MSEC(500), K_MSEC(500));
+	data->dev = dev;
+	k_work_init_delayable(&data->sensor_work, get_target_sensor_temp);
+	k_work_schedule(&data->sensor_work, K_MSEC(500));
 
 	return 0;
 }
+
+#ifdef CONFIG_PM_DEVICE
+/*
+ * TURN_OFF/TURN_ON come from the power domain this node sits on: the
+ * backing target_sensor loses power along with it, so stop polling it
+ * while off and resume once power is back.
+ */
+static int lm75_target_pm_action(const struct device *dev,
+				  enum pm_device_action action)
+{
+	struct i2c_lm75_target_data *data = dev->data;
+
+	switch (action) {
+	case PM_DEVICE_ACTION_SUSPEND:
+	case PM_DEVICE_ACTION_RESUME:
+		/* No state to save: polling just re-reads the latest sample */
+		break;
+	case PM_DEVICE_ACTION_TURN_OFF:
+		k_work_cancel_delayable(&data->sensor_work);
+		break;
+	case PM_DEVICE_ACTION_TURN_ON:
+		k_work_reschedule(&data->sensor_work, K_MSEC(500));
+		break;
+	default:
+		return -ENOTSUP;
+	}
+
+	return 0;
+}
+#endif /* CONFIG_PM_DEVICE */
 
 #define I2C_LM75_INIT(inst)						\
 	static struct i2c_lm75_target_data				\
@@ -235,9 +275,11 @@ static int i2c_lm75_target_init(const struct device *dev)
 		.temp_sensor = DEVICE_DT_GET(DT_PHANDLE(DT_DRV_INST(inst), target_sensor)),  \
 	};								\
 									\
+	PM_DEVICE_DT_INST_DEFINE(inst, lm75_target_pm_action);		\
+									\
 	DEVICE_DT_INST_DEFINE(inst,					\
 			    &i2c_lm75_target_init,			\
-			    NULL,					\
+			    PM_DEVICE_DT_INST_GET(inst),		\
 			    &i2c_lm75_target_##inst##_dev_data,		\
 			    &i2c_lm75_target_##inst##_cfg,		\
 			    POST_KERNEL,				\
