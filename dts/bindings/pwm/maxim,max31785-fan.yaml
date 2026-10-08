@@ -105,6 +105,16 @@ child-binding:
       default: 600
       enum: [600, 300, 200, 120, 60, 40, 30, 24]
 
+    spinup-revs:
+      required: false
+      type: int
+      description: |
+        Number of tach revolutions to wait for before confirming the fan
+        has spun up (MFR_FAN_CONFIG SPIN). A value of 0 disables spin-up
+        confirmation entirely.
+      default: 0
+      enum: [0, 2, 4, 8]
+
     health-meter-enable:
       type: boolean
       description: |
