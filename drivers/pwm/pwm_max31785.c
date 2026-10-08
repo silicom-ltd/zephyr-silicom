@@ -67,6 +67,14 @@ struct fan_max31785_common_data {
 	 (ds) == 120 ? 3 : (ds) == 60 ? 4 : (ds) == 40 ? 5 :	\
 	 (ds) == 30 ? 6 : 7)
 
+/*
+ * initial-setting is a plain devicetree value, but FAN_COMMAND_1's units
+ * depend on mode: duty cycle in units of 0.01% in PWM mode (so scale the
+ * devicetree percentage by 100), vs. raw RPM in RPM mode (no scaling).
+ */
+#define MAX31785_INITIAL_SETTING_ENCODE(mode, val) \
+	((mode) == FAN_MANUAL_RPM ? (val) : (val) * 100)
+
 union mfr_fan_config {
 	struct {
 		uint16_t spinup :2;
@@ -299,7 +307,9 @@ static int fan_max31785_common_init(const struct device *dev)
 		.fan_speeds = DT_PROP_OR(node_id, fan_speeds, {0}),						\
 		.fan_temps = DT_PROP_OR(node_id, fan_temps, {0}),						\
 		.mode = DT_STRING_UPPER_TOKEN(node_id, mode),							\
-		.initial_setting = DT_PROP_OR(node_id, initial_setting, 0) * 100,				\
+		.initial_setting = MAX31785_INITIAL_SETTING_ENCODE(					\
+			DT_STRING_UPPER_TOKEN(node_id, mode),						\
+			DT_PROP_OR(node_id, initial_setting, 0)),					\
 		LOG_INSTANCE_PTR_INIT(log, _source, node_id)							\
 	};											   		\
 														\
