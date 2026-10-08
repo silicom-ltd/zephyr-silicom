@@ -68,6 +68,13 @@ struct fan_max31785_common_data {
 	 (ds) == 30 ? 6 : 7)
 
 /*
+ * spinup-revs is in tach revolutions (devicetree); MFR_FAN_CONFIG SPIN is a
+ * 2-bit code: 0 (disabled), 2, 4, or 8 revolutions map to codes 0-3.
+ */
+#define MAX31785_SPIN_ENCODE(revs) \
+	((revs) == 0 ? 0 : (revs) == 2 ? 1 : (revs) == 4 ? 2 : 3)
+
+/*
  * initial-setting is a plain devicetree value, but FAN_COMMAND_1's units
  * depend on mode: duty cycle in units of 0.01% in PWM mode (so scale the
  * devicetree percentage by 100), vs. raw RPM in RPM mode (no scaling).
@@ -303,7 +310,7 @@ static int fan_max31785_common_init(const struct device *dev)
 		.fan_config.rotor_stuck_hi = DT_PROP(node_id, locked_rotor_active_high),			\
 		.fan_config.rotor_output = DT_PROP(node_id, locked_rotor_en),					\
 		.fan_config.dual_tach_en = DT_PROP(node_id, dual_tach_enable),					\
-		.fan_config.spinup = DT_PROP_OR(node_id, spinup, 0),			   			\
+		.fan_config.spinup = MAX31785_SPIN_ENCODE(DT_PROP_OR(node_id, spinup_revs, 0)),			\
 		.fan_speeds = DT_PROP_OR(node_id, fan_speeds, {0}),						\
 		.fan_temps = DT_PROP_OR(node_id, fan_temps, {0}),						\
 		.mode = DT_STRING_UPPER_TOKEN(node_id, mode),							\
