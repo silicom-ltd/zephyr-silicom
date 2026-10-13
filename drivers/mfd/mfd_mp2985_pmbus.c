@@ -57,7 +57,7 @@ int mfd_mp2985_write_word(const struct device *dev, int page, uint8_t reg, uint1
 
 	k_mutex_lock(&data->lock, K_FOREVER);
 	ret = pmbus_write_word_data(&config->smbus, page, reg, word);
-	k_mutx_unlock(&data->lock);
+	k_mutex_unlock(&data->lock);
 
 	return ret;
 }
@@ -79,6 +79,7 @@ int mfd_mp2985_read_byte(const struct device *dev, int page, uint8_t reg, uint8_
 {
 	const struct mfd_mp2985_config *config = dev->config;
 	struct mfd_mp2985_data *data = dev->data;
+	int ret;
 
 	k_mutex_lock(&data->lock, K_FOREVER);
 	ret = pmbus_read_byte_data(&config->smbus, page, reg, byte);
@@ -94,8 +95,11 @@ static int mfd_mp2985_init(const struct device *dev)
 	int result;
 	uint8_t byte_value;
 
-	k_mutex_lock(&data->lock);
+	k_mutex_init(&data->lock);
+
+	k_mutex_lock(&data->lock, K_FOREVER);
 	result = pmbus_read_byte_data(&config->smbus, 0, 0x98, &byte_value);
+	k_mutex_unlock(&data->lock);
 
 	if (result != 0) {
 		LOG_DBG("Error reading MP2985");
