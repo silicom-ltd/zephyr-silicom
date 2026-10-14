@@ -239,7 +239,12 @@ static int fan_max31785_init(const struct device *dev)
 		j = 0;
 		for (i = 0; i < 16; i+=2) {
 			fan_lut[i] = config->fan_temps[j]*100;
-			fan_lut[i+1] = config->fan_speeds[j]*100;
+			/*
+			 * DIRECT format: PWM duty cycle is in 0.01% units
+			 * (so *100), but RPM targets have no scaling (R=0).
+			 */
+			fan_lut[i+1] = (config->mode == FAN_AUTO_RPM) ?
+				config->fan_speeds[j] : config->fan_speeds[j]*100;
 			j++;
 		}
 
