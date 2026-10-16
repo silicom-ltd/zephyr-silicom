@@ -31,3 +31,28 @@ properties:
 
   pinctrl-names:
     required: true
+
+  dmas:
+    description: |
+      Optional DMA channel for the controller's network-layer (hardware
+      block-transfer) state machine, used by the i2c_mchp_xec_v2_nl driver
+      instead of the legacy byte-polled i2c_mchp_xec_v2 driver. Unlike a
+      UART or SPI peripheral, this controller's Master Transmit Buffer and
+      Master Receive Buffer registers share a single hardware flow-control
+      device number and are never active at the same time (the state
+      machine is either transmitting or receiving, not both), so a single
+      DMA channel is reconfigured between the write and read phases of a
+      transaction rather than using separate "tx"/"rx" channels.
+
+      The phandle's 2nd cell (trigsrc) must be the controller instance's
+      Master network-layer DMA device number; see
+      include/zephyr/dt-bindings/dma/mchp_xec_i2c_dma.h.
+
+      Example for I2C/SMB instance 0:
+         dmas = <&dmac 0 MCHP_XEC_I2C_DMA_MTR(0)>;
+         dma-names = "mtr";
+
+  dma-names:
+    description: |
+      Required if the dmas property exists. Must be "mtr" (Master network
+      layer transmit/receive, shared channel).

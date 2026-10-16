@@ -1113,4 +1113,11 @@ static int i2c_xec_init(const struct device *dev)
 		irq_enable(DT_INST_IRQN(n));				\
 	}
 
-DT_INST_FOREACH_STATUS_OKAY(I2C_XEC_DEVICE)
+/*
+ * Skip instances claimed by the network-layer (DMA) driver,
+ * i2c_mchp_xec_v2_nl.c, identified by the presence of a "dmas" property.
+ */
+#define I2C_XEC_DEVICE_COND(n)							\
+	COND_CODE_1(DT_INST_DMAS_HAS_NAME(n, mtr), (), (I2C_XEC_DEVICE(n)))
+
+DT_INST_FOREACH_STATUS_OKAY(I2C_XEC_DEVICE_COND)
