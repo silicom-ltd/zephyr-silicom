@@ -398,7 +398,23 @@ static int __maybe_unused i2c_xec_nl_init(const struct device *dev)
 	return i2c_xec_nl_reset_config(dev);
 }
 
+/*
+ * Each I2C/SMB controller instance's network-layer Master state machine can
+ * only use one specific physical DMA channel, fixed by hardware wiring (not
+ * a software-selectable mux): on this chip family, that channel number is
+ * always numerically equal to the hardware flow-control device number
+ * (mchp_xec_i2c_dma.h) assigned to the same instance+direction, e.g. SMB0
+ * master is channel 1, device 1; SMB1 master is channel 3, device 3; etc.
+ * Catch a devicetree that names the wrong channel for its "mtr" dmas entry
+ * at build time rather than silently producing a DMA transfer that never
+ * completes (or corrupts another peripheral's channel) on real hardware.
+ */
 #define I2C_XEC_NL_DEVICE(n)							\
+	BUILD_ASSERT(DT_INST_DMAS_CELL_BY_NAME(n, mtr, channel) ==		\
+		     DT_INST_DMAS_CELL_BY_NAME(n, mtr, trigsrc),		\
+		     "microchip,xec-i2c-v2 instance's \"mtr\" dmas channel "	\
+		     "must equal its hardware flow-control device number "	\
+		     "(see include/zephyr/dt-bindings/dma/mchp_xec_i2c_dma.h)"); \
 	PINCTRL_DT_INST_DEFINE(n);						\
 										\
 	static void i2c_xec_nl_irq_config_func_##n(void);			\
