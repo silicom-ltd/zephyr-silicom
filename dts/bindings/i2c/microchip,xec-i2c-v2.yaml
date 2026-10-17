@@ -46,10 +46,15 @@ properties:
 
       The phandle's 2nd cell (trigsrc) must be the controller instance's
       Master network-layer DMA device number; see
-      include/zephyr/dt-bindings/dma/mchp_xec_i2c_dma.h.
+      include/zephyr/dt-bindings/dma/mchp_xec_i2c_dma.h. The 1st cell
+      (channel) is not a free software choice either: this instance's
+      Master state machine is wired to one specific physical DMA channel,
+      which is always numerically equal to the device number (the driver
+      enforces this with a build-time BUILD_ASSERT).
 
-      Example for I2C/SMB instance 0:
-         dmas = <&dmac 0 MCHP_XEC_I2C_DMA_MTR(0)>;
+      Example for I2C/SMB instance 0 (master device number 1, so channel
+      must also be 1):
+         dmas = <&dmac MCHP_XEC_I2C_DMA_MTR(0) MCHP_XEC_I2C_DMA_MTR(0)>;
          dma-names = "mtr";
 
   dma-names:
