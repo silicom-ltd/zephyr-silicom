@@ -33,7 +33,31 @@ struct i2c_lm75_target_data {
 struct i2c_lm75_target_config {
 	struct i2c_dt_spec bus;
 	const struct device *temp_sensor;
+	int32_t failsafe_millic;
 };
+
+/*
+ * Packs a sensor_value temperature into the LM75 register pair
+ * (lm75_regs[0]/[1]), shared by the real sensor-sample path and the PM
+ * failsafe path below.
+ */
+static void lm75_target_encode_temp(struct i2c_lm75_target_data *data,
+				     const struct sensor_value *temp)
+{
+	int rounded;
+	int bitmask = 0;
+	int resolution = 3;
+	int modulo = 500000;
+
+	data->lm75_regs[0] = temp->val1;
+	rounded = ROUND_DOWN(temp->val2, 125000);
+	while (resolution > 0) {
+		bitmask |= (rounded / modulo) ? (1 << (resolution + 4)) : 0;
+		resolution--;
+		modulo >>= 1;
+	}
+	data->lm75_regs[1] = bitmask;
+}
 
 /*
  * Runs in the system workqueue thread, not ISR context (unlike the k_timer
@@ -47,35 +71,14 @@ static void get_target_sensor_temp(struct k_work *work)
 		CONTAINER_OF(dwork, struct i2c_lm75_target_data, sensor_work);
 	const struct i2c_lm75_target_config *config = data->dev->config;
 	struct sensor_value temp;
-
-	int rounded;
-	int bitmask = 0;
-	int resolution = 3;
-	int modulo = 500000;
 	int ret;
 
 	ret = sensor_sample_fetch_chan(config->temp_sensor, SENSOR_CHAN_DIE_TEMP);
 	sensor_channel_get(config->temp_sensor, SENSOR_CHAN_DIE_TEMP, &temp);
 
-	data->lm75_regs[0] = temp.val1;	
-	rounded = ROUND_DOWN(temp.val2,125000);
-	while (resolution > 0) {
-		bitmask |= (rounded / modulo) ? (1 << (resolution + 4)) : 0;
-		resolution--;
-		modulo >>= 1;
-	}
-#if 0
-	bitmask = (rounded - 500000 > 0 ? 0x80 : 0);
-	rounded %= 500000;
-	bitmask |= (rounded - 250000 > 0 ? 0x40 : 0);
-	rounded %= 250000;
-	bitmask |= (rounded - 125000 > 0 ? 0x20 : 0);
-#endif
-	data->lm75_regs[1] = bitmask;
-//	data->lm75_regs[1] = DIV_ROUND_CLOSEST(temp.val2,125000) * 125000;
-//	data->lm75_regs[1] = temp.val2 < 5000 ? 0 : 0x80;
+	lm75_target_encode_temp(data, &temp);
 
-	LOG_DBG("lm75 target sensor read %d.%d, bitmask = 0x%08x",temp.val1, temp.val2, bitmask);
+	LOG_DBG("lm75 target sensor read %d.%d", temp.val1, temp.val2);
 
 	k_work_reschedule(dwork, K_MSEC(500));
 }
@@ -244,6 +247,7 @@ static int i2c_lm75_target_init(const struct device *dev)
 static int lm75_target_pm_action(const struct device *dev,
 				  enum pm_device_action action)
 {
+	const struct i2c_lm75_target_config *config = dev->config;
 	struct i2c_lm75_target_data *data = dev->data;
 
 	switch (action) {
@@ -251,9 +255,21 @@ static int lm75_target_pm_action(const struct device *dev,
 	case PM_DEVICE_ACTION_RESUME:
 		/* No state to save: polling just re-reads the latest sample */
 		break;
-	case PM_DEVICE_ACTION_TURN_OFF:
+	case PM_DEVICE_ACTION_TURN_OFF: {
+		struct sensor_value failsafe = {
+			.val1 = config->failsafe_millic / 1000,
+			.val2 = (config->failsafe_millic % 1000) * 1000,
+		};
+
 		k_work_cancel_delayable(&data->sensor_work);
+		/*
+		 * target_sensor loses power along with this node, so its last
+		 * sample is stale; report the configured failsafe value
+		 * instead of continuing to serve it until power returns.
+		 */
+		lm75_target_encode_temp(data, &failsafe);
 		break;
+	}
 	case PM_DEVICE_ACTION_TURN_ON:
 		k_work_reschedule(&data->sensor_work, K_MSEC(500));
 		break;
@@ -273,6 +289,7 @@ static int lm75_target_pm_action(const struct device *dev,
 		i2c_lm75_target_##inst##_cfg = {			\
 		.bus = I2C_DT_SPEC_INST_GET(inst),			\
 		.temp_sensor = DEVICE_DT_GET(DT_PHANDLE(DT_DRV_INST(inst), target_sensor)),  \
+		.failsafe_millic = DT_INST_PROP(inst, failsafe_temp_millic),	\
 	};								\
 									\
 	PM_DEVICE_DT_INST_DEFINE(inst, lm75_target_pm_action);		\
