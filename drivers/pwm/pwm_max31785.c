@@ -126,24 +126,6 @@ struct fan_max31785_config {
 	LOG_INSTANCE_PTR_DECLARE(log);
 };
 
-#if 0
-static int max31785_get_cycles_per_sec(const struct device *dev, uint32_t channel, uint64_t *cycles)
-{
-	__unused const struct fan_max31785_config *config = dev->config;
-	__unused struct max31785_data *data = dev->data;
-	__unused uint16_t value;
-
-	__unused int result;
-
-	return 0;
-}
-
-static const struct pwm_driver_api max31785_pwm_api = {
-	.set_cycles = max31785_set_cycles,
-	.get_cycles_per_sec = max31785_get_cycles_per_sec,
-};
-#endif
-
 static int fan_max31785_speed_get(const struct device *dev, struct sensor_value *value)
 {
 	const struct fan_max31785_config *config = dev->config;
@@ -180,46 +162,10 @@ static int fan_max31785_cycles_set(const struct device *dev, unsigned int cycles
 	return 0;
 }
 
-#if 0
-static int fan_max31785_speed_sample_fetch(const struct device *dev, enum sensor_channel)
-{
-	const struct fan_max31785_config *config = dev->config;
-	struct fan_max31785_data *data = dev->data;
-
-	uint16_t value;
-	int ret;
-
-	ret = pmbus_read_word_data(&config->smbus, config->page, 0, PMBUS_READ_FAN_SPEED_1, &value);
-
-	if (ret)
-		return -EINVAL;
-
-	data->count = value;
-	
-	return 0;
-}
-
-static int fan_max31785_speed_channel_get(const struct device *dev, enum sensor_channel, struct sensor_value *val)
-{
-	struct fan_max31785_data *data = dev->data;
-
-	val->val1 = data->count;
-	val->val2 = 0U;
-
-	return 0;
-}
-
-#endif
 static const struct fan_parent_driver_api fan_api = {
 	.get_speed = fan_max31785_speed_get,
 	.set_cycles = fan_max31785_cycles_set,
 };
-#if 0
-static const struct sensor_driver_api fan_api = {
-	.sample_fetch = fan_max31785_speed_sample_fetch,
-	.channel_get = fan_max31785_speed_channel_get,
-};
-#endif
 	
 static int fan_max31785_init(const struct device *dev)
 {
@@ -294,24 +240,22 @@ static int fan_max31785_common_init(const struct device *dev)
 	return 0;
 }
 
-
-
 #define FAN_MAX31785_DEFINE(node_id, id, _source)								\
 	static struct fan_max31785_data fan_data_##id;								\
 														\
 	LOG_INSTANCE_REGISTER(_source, node_id, 4);								\
 	static const struct fan_max31785_config fan_config_##id = {						\
 		.smbus = SMBUS_DT_SPEC_GET(DT_GPARENT(node_id)),						\
-		.mfd = DEVICE_DT_GET(DT_BUS(node_id)),							\
+		.mfd = DEVICE_DT_GET(DT_BUS(node_id)),								\
 		.page = _source,										\
 		.fan.ppr = DT_PROP_OR(node_id, ppr, 2) - 1,							\
 		.fan.enable = 1,							 			\
 		.fan_config.frequency = MAX31785_FREQ_ENCODE(DT_PROP_OR(node_id, pwm_frequency, 30)),		\
 		.fan_config.hyst = MAX31785_HYST_ENCODE(DT_PROP_OR(node_id, hyst, 2)),				\
-		.fan_config.tsfo = DT_PROP(node_id, fan_fault_hold_last_value),				\
+		.fan_config.tsfo = DT_PROP(node_id, fan_fault_hold_last_value),					\
 		.fan_config.tacho = DT_PROP(node_id, fan_fault_no_ramp),					\
 		.fan_config.ramp_rate = MAX31785_RAMP_ENCODE(DT_PROP_OR(node_id, fan_ramp_time_ds, 600)),	\
-		.fan_config.health_en = DT_PROP(node_id, health_meter_enable),				\
+		.fan_config.health_en = DT_PROP(node_id, health_meter_enable),					\
 		.fan_config.rotor_stuck_hi = DT_PROP(node_id, locked_rotor_active_high),			\
 		.fan_config.rotor_output = DT_PROP(node_id, locked_rotor_en),					\
 		.fan_config.dual_tach_en = DT_PROP(node_id, dual_tach_enable),					\
@@ -319,9 +263,9 @@ static int fan_max31785_common_init(const struct device *dev)
 		.fan_speeds = DT_PROP_OR(node_id, fan_speeds, {0}),						\
 		.fan_temps = DT_PROP_OR(node_id, fan_temps, {0}),						\
 		.mode = DT_STRING_UPPER_TOKEN(node_id, mode),							\
-		.initial_setting = MAX31785_INITIAL_SETTING_ENCODE(					\
-			DT_STRING_UPPER_TOKEN(node_id, mode),						\
-			DT_PROP_OR(node_id, initial_setting, 0)),					\
+		.initial_setting = MAX31785_INITIAL_SETTING_ENCODE(						\
+			DT_STRING_UPPER_TOKEN(node_id, mode),							\
+			DT_PROP_OR(node_id, initial_setting, 0)),						\
 		LOG_INSTANCE_PTR_INIT(log, _source, node_id)							\
 	};											   		\
 														\
