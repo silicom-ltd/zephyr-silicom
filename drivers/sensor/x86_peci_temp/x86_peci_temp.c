@@ -12,6 +12,7 @@
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/drivers/peci.h>
+#include <zephyr/pm/device.h>
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(x86_peci_temp, CONFIG_SENSOR_LOG_LEVEL);
@@ -29,28 +30,41 @@ struct peci_dev_config {
 };
 
 struct x86_peci_temp_data {
+	const struct device *dev;
+	struct k_work_delayable peci_check_work;
 	bool cpu_up;
+	/* Set once by peci_ping(); TjMax doesn't change across host power cycles */
+	bool tjmax_valid;
 	uint8_t tjmax;
 	float temp_out;
 };
 
 static int peci_get_tjmax(const struct device *dev, uint8_t *tjmax);
 
-static void peci_ping(struct k_timer *timer)
+/*
+ * Runs in the system workqueue thread, not ISR context (unlike the k_timer
+ * expiry function this replaces), so peci_get_tjmax() is free to block.
+ * Reschedules itself once a second until a valid TjMax is read, then stops.
+ */
+static void peci_ping(struct k_work *work)
 {
-	const struct device *dev = timer->user_data;
-	const struct peci_dev_config *config = dev->config;
-	struct x86_peci_temp_data *data = dev->data;
+	struct k_work_delayable *dwork = k_work_delayable_from_work(work);
+	struct x86_peci_temp_data *data =
+		CONTAINER_OF(dwork, struct x86_peci_temp_data, peci_check_work);
+	const struct peci_dev_config *config = data->dev->config;
 	int ret;
 
 	ret = peci_get_tjmax(config->peci_dev, &data->tjmax);
-	LOG_DBG("Got TJMax %d",data->tjmax);
-	data->cpu_up = true;
-	k_timer_stop(timer);
-	
-}
 
-K_TIMER_DEFINE(peci_check_timer, peci_ping, NULL);
+	if (ret != 0) {
+		k_work_reschedule(dwork, K_SECONDS(1));
+		return;
+	}
+
+	LOG_DBG("Got TJMax %d",data->tjmax);
+	data->tjmax_valid = true;
+	data->cpu_up = true;
+}
 
 /* 
  * Utility functions taken directly from samples
@@ -63,7 +77,7 @@ static int peci_get_tjmax(const struct device *dev, uint8_t *tjmax)
 	uint8_t rx_fcs;
 	struct peci_msg packet;
 
-	uint8_t peci_resp_buf[PECI_RD_PKG_LEN_DWORD+1];
+	uint8_t peci_resp_buf[PECI_RD_PKG_LEN_DWORD+1] = {0};
 	uint8_t peci_req_buf[] = { PECI_CONFIGHOSTID,
 				PECI_CONFIGINDEX_TJMAX,
 				PECI_CONFIGPARAM & 0x00FF,
@@ -87,6 +101,9 @@ static int peci_get_tjmax(const struct device *dev, uint8_t *tjmax)
 		k_sleep(K_MSEC(1));
 		retries--;
 	} while ((peci_resp != PECI_CC_RSP_SUCCESS) && (retries > 0));
+
+	if (peci_resp != PECI_CC_RSP_SUCCESS)
+		return -1;
 
 	*tjmax = packet.rx_buffer.buf[3];
 
@@ -177,6 +194,7 @@ static const struct sensor_driver_api x86_peci_temp_driver_api = {
 static int x86_peci_temp_init(const struct device *dev)
 {
 	const struct peci_dev_config *config = dev->config;
+	struct x86_peci_temp_data *data = dev->data;
 	int ret;
 
 	ret = peci_config(config->peci_dev, 1000u);
@@ -187,12 +205,43 @@ static int x86_peci_temp_init(const struct device *dev)
 
 	peci_enable(config->peci_dev);
 
-	k_timer_user_data_set(&peci_check_timer, (void *)dev);
-
-	k_timer_start(&peci_check_timer, K_SECONDS(5), K_NO_WAIT);
+	data->dev = dev;
+	k_work_init_delayable(&data->peci_check_work, peci_ping);
+	k_work_schedule(&data->peci_check_work, K_SECONDS(5));
 
 	return 0;
 }
+
+#ifdef CONFIG_PM_DEVICE
+/*
+ * TURN_OFF/TURN_ON come from the power domain the node sits on (e.g. one that
+ * follows host S0). They only gate reads through cpu_up: peci_ping() runs
+ * only after EC boot, and TjMax isn't re-read on host power cycles. If the
+ * first ping hasn't succeeded yet, it is left to set cpu_up itself.
+ */
+static int x86_peci_temp_pm_action(const struct device *dev,
+				   enum pm_device_action action)
+{
+	struct x86_peci_temp_data *data = dev->data;
+
+	switch (action) {
+	case PM_DEVICE_ACTION_SUSPEND:
+	case PM_DEVICE_ACTION_RESUME:
+		/* No state to save: the bus is idle between transfers */
+		break;
+	case PM_DEVICE_ACTION_TURN_OFF:
+		data->cpu_up = false;
+		break;
+	case PM_DEVICE_ACTION_TURN_ON:
+		data->cpu_up = data->tjmax_valid;
+		break;
+	default:
+		return -ENOTSUP;
+	}
+
+	return 0;
+}
+#endif /* CONFIG_PM_DEVICE */
 
 #define X86_PECI_TEMP_DEFINE(inst)								\
 	static struct x86_peci_temp_data x86_peci_temp_dev_data_##inst;				\
@@ -201,7 +250,9 @@ static int x86_peci_temp_init(const struct device *dev)
 		.peci_dev = DEVICE_DT_GET(DT_PHANDLE(DT_DRV_INST(inst), peci_dev)),		\
 	};											\
 												\
-	SENSOR_DEVICE_DT_INST_DEFINE(inst, x86_peci_temp_init, NULL,				\
+	PM_DEVICE_DT_INST_DEFINE(inst, x86_peci_temp_pm_action);				\
+												\
+	SENSOR_DEVICE_DT_INST_DEFINE(inst, x86_peci_temp_init, PM_DEVICE_DT_INST_GET(inst),	\
 			      &x86_peci_temp_dev_data_##inst, &peci_dev_config_##inst,		\
 			      POST_KERNEL, CONFIG_SENSOR_INIT_PRIORITY,				\
 			      &x86_peci_temp_driver_api);					\
