@@ -82,6 +82,10 @@ struct fan_max31785_common_data {
 #define MAX31785_INITIAL_SETTING_ENCODE(mode, val) \
 	((mode) == FAN_MANUAL_RPM ? (val) : (val) * 100)
 
+/* FAN_CONFIG_1/2's mode bit selects RPM (1) vs PWM (0) tach/control mode. */
+#define MAX31785_MODE_ENCODE(mode) \
+	(((mode) == FAN_AUTO_RPM || (mode) == FAN_MANUAL_RPM) ? 1 : 0)
+
 union mfr_fan_config {
 	struct {
 		uint16_t spinup :2;
@@ -214,16 +218,9 @@ static int fan_max31785_init(const struct device *dev)
 	}
 
 	LOG_INST_DBG(config->log, "fan mode: 0x%x",config->mode);
-	switch (config->mode) {
-		case FAN_AUTO_RPM:
-		case FAN_MANUAL_RPM:
-			LOG_INST_DBG(config->log, "fan reg: 0x%x",config->fan.raw|(1<<6));
-			ret = mfd_max31785_write_byte(config->mfd, config->page, PMBUS_FAN_CONFIG_12, config->fan.raw | (1 << 6));
-			break;
-		default:
-			LOG_INST_DBG(config->log, "fan reg: 0x%x",config->fan.raw);
-			ret = mfd_max31785_write_byte(config->mfd, config->page, PMBUS_FAN_CONFIG_12, config->fan.raw);
-	}
+	LOG_INST_DBG(config->log, "fan reg: 0x%x",config->fan.raw);
+	ret = mfd_max31785_write_byte(config->mfd, config->page,
+		PMBUS_FAN_CONFIG_12, config->fan.raw);
 	if (ret)
 			LOG_INST_DBG(config->log, "MAX31785 FAN_COMMAND_1 write failed");
 
@@ -250,6 +247,7 @@ static int fan_max31785_common_init(const struct device *dev)
 		.page = _source,										\
 		.fan.ppr = DT_PROP_OR(node_id, ppr, 2) - 1,							\
 		.fan.enable = 1,							 			\
+		.fan.mode = MAX31785_MODE_ENCODE(DT_STRING_UPPER_TOKEN(node_id, mode)),			\
 		.fan_config.frequency = MAX31785_FREQ_ENCODE(DT_PROP_OR(node_id, pwm_frequency, 30)),		\
 		.fan_config.hyst = MAX31785_HYST_ENCODE(DT_PROP_OR(node_id, hyst, 2)),				\
 		.fan_config.tsfo = DT_PROP(node_id, fan_fault_hold_last_value),					\
