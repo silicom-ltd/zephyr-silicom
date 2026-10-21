@@ -3,7 +3,7 @@
 # Copyright (c) 2025 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 
-menuconfig PMBUS
+config PMBUS
 	bool "Power Management Bus (PMBus) drivers"
 	depends on SMBUS
 	help
