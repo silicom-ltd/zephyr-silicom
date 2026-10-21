@@ -1574,9 +1574,9 @@ static int espi_xec_init(const struct device *dev)
 }
 
 #undef DT_DRV_COMPAT
-#define DT_DRV_COMPAT microchip_xec_espi_maf_flash
+#define DT_DRV_COMPAT microchip_xec_maf_flash
 
-#if CONFIG_DT_HAS_MICROCHIP_XEC_ESPI_MAF_FLASH_ENABLED
+#if CONFIG_DT_HAS_MICROCHIP_XEC_MAF_FLASH_ENABLED
 #include <zephyr/drivers/flash.h>
 
 #if DT_PROP(DT_INST(0, microchip_xec_maf_flash), max_sectors)
