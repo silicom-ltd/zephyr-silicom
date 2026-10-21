@@ -36,6 +36,15 @@ struct i2c_lm75_target_config {
 	int32_t failsafe_millic;
 };
 
+/* Converts the failsafe-temp-millic devicetree value to a sensor_value. */
+static struct sensor_value lm75_target_failsafe_value(int32_t failsafe_millic)
+{
+	return (struct sensor_value){
+		.val1 = failsafe_millic / 1000,
+		.val2 = (failsafe_millic % 1000) * 1000,
+	};
+}
+
 /*
  * Packs a sensor_value temperature into the LM75 register pair
  * (lm75_regs[0]/[1]), shared by the real sensor-sample path and the PM
@@ -208,6 +217,7 @@ static int i2c_lm75_target_init(const struct device *dev)
 {
 	struct i2c_lm75_target_data *data = dev->data;
 	const struct i2c_lm75_target_config *cfg = dev->config;
+	struct sensor_value failsafe;
 
 	if (!device_is_ready(cfg->bus.bus)) {
 		LOG_ERR("I2C controller device not ready");
@@ -216,8 +226,15 @@ static int i2c_lm75_target_init(const struct device *dev)
 
 	data->reg_ptr = 0;
 	data->write_reg = false;
-	data->lm75_regs[0] = 0x11;
-	data->lm75_regs[1] = 0x22;
+
+	/*
+	 * Seed the temperature register pair with the failsafe value, not an
+	 * arbitrary pattern, so a read before the first real sensor sample
+	 * completes (500ms after init) can't return a bogus/zero-ish reading.
+	 */
+	failsafe = lm75_target_failsafe_value(cfg->failsafe_millic);
+	lm75_target_encode_temp(data, &failsafe);
+
 	data->lm75_regs[2] = 0x33;
 	data->lm75_regs[3] = 0x44;
 	data->lm75_regs[4] = 0x55;
@@ -256,10 +273,7 @@ static int lm75_target_pm_action(const struct device *dev,
 		/* No state to save: polling just re-reads the latest sample */
 		break;
 	case PM_DEVICE_ACTION_TURN_OFF: {
-		struct sensor_value failsafe = {
-			.val1 = config->failsafe_millic / 1000,
-			.val2 = (config->failsafe_millic % 1000) * 1000,
-		};
+		struct sensor_value failsafe = lm75_target_failsafe_value(config->failsafe_millic);
 
 		k_work_cancel_delayable(&data->sensor_work);
 		/*
