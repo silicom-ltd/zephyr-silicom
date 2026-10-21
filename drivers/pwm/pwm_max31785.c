@@ -149,12 +149,14 @@ static int fan_max31785_cycles_set(const struct device *dev, unsigned int cycles
 
 	if (config->mode == FAN_MANUAL_PWM) {
 		if (cycles > 100) return -EINVAL;
-		ret = mfd_max31785_write_word(config->mfd, config->page, PMBUS_FAN_COMMAND_1, cycles*100);
+		ret = mfd_max31785_write_word(config->mfd, config->page, PMBUS_FAN_COMMAND_1,
+			cycles * 100);
 	}
 
 	if (config->mode == FAN_MANUAL_RPM) {
 		if (cycles > 0x7FFF) return -EINVAL;
-		ret = mfd_max31785_write_word(config->mfd, config->page, PMBUS_FAN_COMMAND_1, cycles);
+		ret = mfd_max31785_write_word(config->mfd, config->page, PMBUS_FAN_COMMAND_1,
+			cycles);
 	}
 
 	if (ret) return -EINVAL;
@@ -175,7 +177,8 @@ static int fan_max31785_init(const struct device *dev)
 	int ret;
 
 	LOG_INST_DBG(config->log, "cfg reg: 0x%x",config->fan_config.raw);
-	ret = mfd_max31785_write_word(config->mfd, config->page, MFR_FAN_CONFIG, config->fan_config.raw);
+	ret = mfd_max31785_write_word(config->mfd, config->page, MFR_FAN_CONFIG,
+		config->fan_config.raw);
 
 	if (ret) {
 		LOG_INST_DBG(config->log, "fan register write failed");
@@ -194,23 +197,29 @@ static int fan_max31785_init(const struct device *dev)
 			j++;
 		}
 
-		ret = mfd_max31785_write_block(config->mfd, config->page, MFR_FAN_LUT, 32, (uint8_t *)fan_lut);
+		ret = mfd_max31785_write_block(config->mfd, config->page, MFR_FAN_LUT, 32,
+			(uint8_t *)fan_lut);
 
 		if (ret)
 			LOG_INST_DBG(config->log, "MAX31785 fan write lut failed");
 
-		ret = mfd_max31785_write_word(config->mfd, config->page, PMBUS_FAN_COMMAND_1, 0xFFFF);
+		ret = mfd_max31785_write_word(config->mfd, config->page, PMBUS_FAN_COMMAND_1,
+			0xFFFF);
 
 		if (ret)
 			LOG_INST_DBG(config->log, "MAX31785 FAN_COMMAND_1 write failed");
 
 	}
 	else if (config->initial_setting) {
-			ret = mfd_max31785_write_word(config->mfd, config->page, PMBUS_FAN_COMMAND_1, config->initial_setting);
+			ret = mfd_max31785_write_word(config->mfd, config->page,
+				PMBUS_FAN_COMMAND_1, config->initial_setting);
 			if (ret)
-				LOG_INST_DBG(config->log, "MAX31785 FAN_COMMAND_1 manual write failed");
+				LOG_INST_DBG(config->log,
+					"MAX31785 FAN_COMMAND_1 manual write failed");
 			else
-				LOG_INST_DBG(config->log, "MAX31785 FAN_COMMAND_1 manual write %d", config->initial_setting);
+				LOG_INST_DBG(config->log,
+					"MAX31785 FAN_COMMAND_1 manual write %d",
+					config->initial_setting);
 	}
 
 	LOG_INST_DBG(config->log, "fan mode: 0x%x",config->mode);
@@ -218,11 +227,13 @@ static int fan_max31785_init(const struct device *dev)
 		case FAN_AUTO_RPM:
 		case FAN_MANUAL_RPM:
 			LOG_INST_DBG(config->log, "fan reg: 0x%x",config->fan.raw|(1<<6));
-			ret = mfd_max31785_write_byte(config->mfd, config->page, PMBUS_FAN_CONFIG_12, config->fan.raw | (1 << 6));
+			ret = mfd_max31785_write_byte(config->mfd, config->page,
+				PMBUS_FAN_CONFIG_12, config->fan.raw | (1 << 6));
 			break;
 		default:
 			LOG_INST_DBG(config->log, "fan reg: 0x%x",config->fan.raw);
-			ret = mfd_max31785_write_byte(config->mfd, config->page, PMBUS_FAN_CONFIG_12, config->fan.raw);
+			ret = mfd_max31785_write_byte(config->mfd, config->page,
+				PMBUS_FAN_CONFIG_12, config->fan.raw);
 	}
 	if (ret)
 			LOG_INST_DBG(config->log, "MAX31785 FAN_COMMAND_1 write failed");
