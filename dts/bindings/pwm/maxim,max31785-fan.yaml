@@ -55,7 +55,6 @@ child-binding:
         rotor stops).
 
     pwm-frequency:
-      required: false
       type: int
       description: |
         Fan PWM output frequency in Hz (MFR_FAN_CONFIG FREQ). This device
@@ -92,7 +91,6 @@ child-binding:
         unset (the default), ramp to 100% while the fault is active.
 
     fan-ramp-time-ds:
-      required: false
       type: int
       description: |
         Time, in deciseconds (tenths of a second), to ramp fan PWM duty
@@ -106,7 +104,6 @@ child-binding:
       enum: [600, 300, 200, 120, 60, 40, 30, 24]
 
     spinup-revs:
-      required: false
       type: int
       description: |
         Number of tach revolutions to wait for before confirming the fan
@@ -125,19 +122,16 @@ child-binding:
         fan-fault-hold-last-value/fan-fault-no-ramp fault handling above.
 
     fan-speeds:
-      required: false
       type: array
       description: |
         Array of speeds per temperature for this fan.
 
     fan-temps:
-      required: false
       type: array
       description: |
         Array of temperatures per speed for this fan.
 
     initial-setting:
-      required: false
       type: int
       description: |
         Initial setting of fan, either PWM % or RPM, depending on mode setting
