@@ -60,7 +60,7 @@ child-binding:
       description: |
         Fan PWM output frequency in Hz (MFR_FAN_CONFIG FREQ). This device
         does not support pulse stretching.
-      default: 30
+      default: 25000
       enum: [30, 50, 100, 150, 25000]
 
     dual-tach-enable:
