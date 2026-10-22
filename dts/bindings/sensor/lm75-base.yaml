@@ -11,5 +11,14 @@ properties:
     description: Source sensor device.
 
   target-period:
-    type: int 
+    type: int
     description: Sample period of sensor in milliseconds.
+
+  failsafe-temp-millic:
+    type: int
+    default: 32000
+    description: |
+      Temperature, in millidegrees Celsius, to report over I2C while the
+      power domain supplying target-sensor is off (PM_DEVICE_ACTION_TURN_OFF)
+      and target-sensor can no longer be read. Defaults to 32000
+      (32.000 deg C).
