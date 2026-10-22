@@ -39,27 +39,99 @@ child-binding:
       enum: [1, 2, 3, 4]
 
     locked-rotor-en:
-      required: false
+      type: boolean
+      description: |
+        If set, the fan outputs a locked-rotor indicator on TACH instead
+        of a tach signal (MFR_FAN_CONFIG ROTOR). If unset (the default),
+        TACH is treated as a normal tachometer input.
+
+    locked-rotor-active-high:
+      type: boolean
+      description: |
+        Polarity of the locked-rotor signal on TACH, if locked-rotor-en is
+        set (MFR_FAN_CONFIG ROTOR_HI_LO). Ignored if locked-rotor-en is
+        unset. If unset (the default), the signal is active-low (TACH is
+        low if the rotor stops); if set, active-high (TACH is high if the
+        rotor stops).
+
+    pwm-frequency:
       type: int
       description: |
-        Fan outputs locked rotor indicator or tach output. 1 = Locked Rotor, default is tach output.
+        Fan PWM output frequency in Hz (MFR_FAN_CONFIG FREQ). This device
+        does not support pulse stretching.
+      default: 25000
+      enum: [30, 50, 100, 150, 25000]
+
+    dual-tach-enable:
+      type: boolean
+      description: |
+        Enable dual-tachometer support for this fan (MFR_FAN_CONFIG
+        DUAL_TACH). In dual-tach applications it is recommended that the
+        slower of the two tachometer signals be presented to TACH when
+        TACHSEL = 0.
+
+    fan-fault-hold-last-value:
+      type: boolean
+      description: |
+        If set, ignore a temperature sensor fault or a stale
+        FAN_COMMAND_1 update and hold the last updated PWM/RPM value
+        (MFR_FAN_CONFIG TSFO) -- in automatic mode, the fan is instead
+        driven by whichever of its other assigned temperature sensors
+        are still valid, if any. If unset (the default), ramp to 100%
+        PWM duty cycle instead: on a temp sensor fault in automatic mode,
+        or if no FAN_COMMAND_1 update occurs within 10s in manual mode.
+
+    fan-fault-no-ramp:
+      type: boolean
+      description: |
+        If set, do not ramp the fan to 100% PWM duty cycle when a fan
+        fault (MFR_FAN_FAULT_LIMIT violation or a locked rotor) is
+        detected -- just report it; normal operation resumes
+        automatically once the fault clears (MFR_FAN_CONFIG TACHO). If
+        unset (the default), ramp to 100% while the fault is active.
+
+    fan-ramp-time-ds:
+      type: int
+      description: |
+        Time, in deciseconds (tenths of a second), to ramp fan PWM duty
+        cycle from 40% to 100% (MFR_FAN_CONFIG RAMP). This jointly sets the
+        PWM duty cycle update rate (200ms or 1000ms) and the maximum duty
+        cycle change allowed per update (1-5%); see the datasheet's
+        MFR_FAN_CONFIG RAMP table for the full breakdown. In RPM mode, the
+        device additionally caps the change to 1% once within 20% of the
+        target speed, and stops changing once within 5% of it.
+      default: 600
+      enum: [600, 300, 200, 120, 60, 40, 30, 24]
+
+    spinup-revs:
+      type: int
+      description: |
+        Number of tach revolutions to wait for before confirming the fan
+        has spun up (MFR_FAN_CONFIG SPIN). A value of 0 disables spin-up
+        confirmation entirely.
       default: 0
-      enum: [0, 1]
+      enum: [0, 2, 4, 8]
+
+    health-meter-enable:
+      type: boolean
+      description: |
+        Enable the fan-health-diagnostic function (MFR_FAN_CONFIG HEALTH).
+        Compares measured vs. expected fan speed (see MFR_FAN_PWM2RPM) to
+        set the GREEN/ORANGE/RED/YELLOW health bits in STATUS_FANS_1_2.
+        This is a predictive diagnostic, separate from the
+        fan-fault-hold-last-value/fan-fault-no-ramp fault handling above.
 
     fan-speeds:
-      required: false
       type: array
       description: |
         Array of speeds per temperature for this fan.
 
     fan-temps:
-      required: false
       type: array
       description: |
         Array of temperatures per speed for this fan.
 
     initial-setting:
-      required: false
       type: int
       description: |
         Initial setting of fan, either PWM % or RPM, depending on mode setting

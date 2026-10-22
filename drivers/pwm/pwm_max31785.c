@@ -47,47 +47,44 @@ struct fan_max31785_common_data {
 	struct k_mutex lock;
 };
 
-#define MAX31785_FAN_MODE_PWM		0
-#define MAX31785_FAN_MODE_RPM		1
+/*
+ * pwm-frequency is in Hz (devicetree); MFR_FAN_CONFIG FREQ is a 3-bit code.
+ * 25kHz is the odd one out (code 7); the other four enum values are evenly
+ * spaced 50Hz apart and map to codes 0-3 in order, so dividing by 50 gives
+ * 30/50=0, 50/50=1, 100/50=2, 150/50=3 directly.
+ */
+#define MAX31785_FREQ_ENCODE(hz) ((hz) == 25000 ? 7 : (hz) / 50)
 
-#define MAX31785_FAN_SPINUP_DISABLE	0
-#define MAX31785_FAN_SPINUP_2REV	1
-#define MAX31785_FAN_SPINUP_4REV	2
-#define MAX31785_FAN_SPINUP_8REV	3
+/* hyst is in degrees C (devicetree); MFR_FAN_CONFIG HYS is a 2-bit code */
+#define MAX31785_HYST_ENCODE(deg) (((deg) / 2) - 1)
 
-#define MAX31785_FAN_LOCKED_ROTOR_EN	1
-#define MAX31785_FAN_STUCK_LEVEL_LOW	0
-#define MAX31785_FAN_STUCK_LEVEL_HIGH	1
-#define MAX31785_FAN_HEALTH_DIS		0
-#define MAX31785_FAN_HEALTH_EN		1
+/*
+ * fan-ramp-time-ds is in deciseconds (devicetree); MFR_FAN_CONFIG RAMP is a
+ * 3-bit code, in the same 600/300/200/120/60/40/30/24 order as codes 0-7.
+ */
+#define MAX31785_RAMP_ENCODE(ds)				\
+	((ds) == 600 ? 0 : (ds) == 300 ? 1 : (ds) == 200 ? 2 :	\
+	 (ds) == 120 ? 3 : (ds) == 60 ? 4 : (ds) == 40 ? 5 :	\
+	 (ds) == 30 ? 6 : 7)
 
-#define MAX31785_FAN_RAMP_1PERCENT_SLOW		0	/* slow is update every 1000ms */
-#define MAX31785_FAN_RAMP_2PERCENT_SLOW		1
-#define MAX31785_FAN_RAMP_3PERCENT_SLOW		2
-#define MAX31785_FAN_RAMP_1PERCENT_FAST		3	/* fast is update every 200ms */
-#define MAX31785_FAN_RAMP_2PERCENT_FAST		4
-#define MAX31785_FAN_RAMP_3PERCENT_FAST		5
-#define MAX31785_FAN_RAMP_4PERCENT_FAST		6
-#define MAX31785_FAN_RAMP_5PERCENT_FAST		7
+/*
+ * spinup-revs is in tach revolutions (devicetree); MFR_FAN_CONFIG SPIN is a
+ * 2-bit code: 0 (disabled), 2, 4, or 8 revolutions map to codes 0-3.
+ */
+#define MAX31785_SPIN_ENCODE(revs) \
+	((revs) == 0 ? 0 : (revs) == 2 ? 1 : (revs) == 4 ? 2 : 3)
 
-#define MAX31785_FAN_TACH_OVERRIDE_EN		0	/* fan @ 100% if fault detected */
-#define MAX31785_FAN_TACH_OVERRIDE_DIS		1	/* fan @ last if fault detected */
-#define MAX31785_FAN_TEMP_FAULT_OVERRIDE_EN	0
-#define MAX31785_FAN_TEMP_FAULT_OVERRIDE_DIS	1
+/*
+ * initial-setting is a plain devicetree value, but FAN_COMMAND_1's units
+ * depend on mode: duty cycle in units of 0.01% in PWM mode (so scale the
+ * devicetree percentage by 100), vs. raw RPM in RPM mode (no scaling).
+ */
+#define MAX31785_INITIAL_SETTING_ENCODE(mode, val) \
+	((mode) == FAN_MANUAL_RPM ? (val) : (val) * 100)
 
-#define MAX31785_FAN_TEMP_HYST_2DEG		0
-#define MAX31785_FAN_TEMP_HYST_4DEG		1
-#define MAX31785_FAN_TEMP_HYST_6DEG		2
-#define MAX31785_FAN_TEMP_HYST_8DEG		3
-
-#define MAX37185_FAN_DUAL_TACH_DIS		0
-#define MAX37185_FAN_DUAL_TACH_EN		1
-
-#define MAX31785_FAN_PWM_FREQUENCY_30HZ		0
-#define MAX31785_FAN_PWM_FREQUENCY_50HZ		1
-#define MAX31785_FAN_PWM_FREQUENCY_100HZ	2
-#define MAX31785_FAN_PWM_FREQUENCY_150HZ	3
-#define MAX31785_FAN_PWM_FREQUENCY_25KHZ	7
+/* FAN_CONFIG_1/2's mode bit selects RPM (1) vs PWM (0) tach/control mode. */
+#define MAX31785_MODE_ENCODE(mode) \
+	(((mode) == FAN_AUTO_RPM || (mode) == FAN_MANUAL_RPM) ? 1 : 0)
 
 union mfr_fan_config {
 	struct {
@@ -133,24 +130,6 @@ struct fan_max31785_config {
 	LOG_INSTANCE_PTR_DECLARE(log);
 };
 
-#if 0
-static int max31785_get_cycles_per_sec(const struct device *dev, uint32_t channel, uint64_t *cycles)
-{
-	__unused const struct fan_max31785_config *config = dev->config;
-	__unused struct max31785_data *data = dev->data;
-	__unused uint16_t value;
-
-	__unused int result;
-
-	return 0;
-}
-
-static const struct pwm_driver_api max31785_pwm_api = {
-	.set_cycles = max31785_set_cycles,
-	.get_cycles_per_sec = max31785_get_cycles_per_sec,
-};
-#endif
-
 static int fan_max31785_speed_get(const struct device *dev, struct sensor_value *value)
 {
 	const struct fan_max31785_config *config = dev->config;
@@ -174,12 +153,14 @@ static int fan_max31785_cycles_set(const struct device *dev, unsigned int cycles
 
 	if (config->mode == FAN_MANUAL_PWM) {
 		if (cycles > 100) return -EINVAL;
-		ret = mfd_max31785_write_word(config->mfd, config->page, PMBUS_FAN_COMMAND_1, cycles*100);
+		ret = mfd_max31785_write_word(config->mfd, config->page, PMBUS_FAN_COMMAND_1,
+			cycles * 100);
 	}
 
 	if (config->mode == FAN_MANUAL_RPM) {
 		if (cycles > 0x7FFF) return -EINVAL;
-		ret = mfd_max31785_write_word(config->mfd, config->page, PMBUS_FAN_COMMAND_1, cycles);
+		ret = mfd_max31785_write_word(config->mfd, config->page, PMBUS_FAN_COMMAND_1,
+			cycles);
 	}
 
 	if (ret) return -EINVAL;
@@ -187,46 +168,10 @@ static int fan_max31785_cycles_set(const struct device *dev, unsigned int cycles
 	return 0;
 }
 
-#if 0
-static int fan_max31785_speed_sample_fetch(const struct device *dev, enum sensor_channel)
-{
-	const struct fan_max31785_config *config = dev->config;
-	struct fan_max31785_data *data = dev->data;
-
-	uint16_t value;
-	int ret;
-
-	ret = pmbus_read_word_data(&config->smbus, config->page, 0, PMBUS_READ_FAN_SPEED_1, &value);
-
-	if (ret)
-		return -EINVAL;
-
-	data->count = value;
-	
-	return 0;
-}
-
-static int fan_max31785_speed_channel_get(const struct device *dev, enum sensor_channel, struct sensor_value *val)
-{
-	struct fan_max31785_data *data = dev->data;
-
-	val->val1 = data->count;
-	val->val2 = 0U;
-
-	return 0;
-}
-
-#endif
 static const struct fan_parent_driver_api fan_api = {
 	.get_speed = fan_max31785_speed_get,
 	.set_cycles = fan_max31785_cycles_set,
 };
-#if 0
-static const struct sensor_driver_api fan_api = {
-	.sample_fetch = fan_max31785_speed_sample_fetch,
-	.channel_get = fan_max31785_speed_channel_get,
-};
-#endif
 	
 static int fan_max31785_init(const struct device *dev)
 {
@@ -236,7 +181,8 @@ static int fan_max31785_init(const struct device *dev)
 	int ret;
 
 	LOG_INST_DBG(config->log, "cfg reg: 0x%x",config->fan_config.raw);
-	ret = mfd_max31785_write_word(config->mfd, config->page, MFR_FAN_CONFIG, config->fan_config.raw);
+	ret = mfd_max31785_write_word(config->mfd, config->page, MFR_FAN_CONFIG,
+		config->fan_config.raw);
 
 	if (ret) {
 		LOG_INST_DBG(config->log, "fan register write failed");
@@ -246,40 +192,44 @@ static int fan_max31785_init(const struct device *dev)
 		j = 0;
 		for (i = 0; i < 16; i+=2) {
 			fan_lut[i] = config->fan_temps[j]*100;
-			fan_lut[i+1] = config->fan_speeds[j]*100;
+			/*
+			 * DIRECT format: PWM duty cycle is in 0.01% units
+			 * (so *100), but RPM targets have no scaling (R=0).
+			 */
+			fan_lut[i+1] = (config->mode == FAN_AUTO_RPM) ?
+				config->fan_speeds[j] : config->fan_speeds[j]*100;
 			j++;
 		}
 
-		ret = mfd_max31785_write_block(config->mfd, config->page, MFR_FAN_LUT, 32, (uint8_t *)fan_lut);
+		ret = mfd_max31785_write_block(config->mfd, config->page, MFR_FAN_LUT, 32,
+			(uint8_t *)fan_lut);
 
 		if (ret)
 			LOG_INST_DBG(config->log, "MAX31785 fan write lut failed");
 
-		ret = mfd_max31785_write_word(config->mfd, config->page, PMBUS_FAN_COMMAND_1, 0xFFFF);
+		ret = mfd_max31785_write_word(config->mfd, config->page, PMBUS_FAN_COMMAND_1,
+			0xFFFF);
 
 		if (ret)
 			LOG_INST_DBG(config->log, "MAX31785 FAN_COMMAND_1 write failed");
 
 	}
 	else if (config->initial_setting) {
-			ret = mfd_max31785_write_word(config->mfd, config->page, PMBUS_FAN_COMMAND_1, config->initial_setting);
+			ret = mfd_max31785_write_word(config->mfd, config->page,
+				PMBUS_FAN_COMMAND_1, config->initial_setting);
 			if (ret)
-				LOG_INST_DBG(config->log, "MAX31785 FAN_COMMAND_1 manual write failed");
+				LOG_INST_DBG(config->log,
+					"MAX31785 FAN_COMMAND_1 manual write failed");
 			else
-				LOG_INST_DBG(config->log, "MAX31785 FAN_COMMAND_1 manual write %d", config->initial_setting);
+				LOG_INST_DBG(config->log,
+					"MAX31785 FAN_COMMAND_1 manual write %d",
+					config->initial_setting);
 	}
 
 	LOG_INST_DBG(config->log, "fan mode: 0x%x",config->mode);
-	switch (config->mode) {
-		case FAN_AUTO_RPM:
-		case FAN_MANUAL_RPM:
-			LOG_INST_DBG(config->log, "fan reg: 0x%x",config->fan.raw|(1<<6));
-			ret = mfd_max31785_write_byte(config->mfd, config->page, PMBUS_FAN_CONFIG_12, config->fan.raw | (1 << 6));
-			break;
-		default:
-			LOG_INST_DBG(config->log, "fan reg: 0x%x",config->fan.raw);
-			ret = mfd_max31785_write_byte(config->mfd, config->page, PMBUS_FAN_CONFIG_12, config->fan.raw);
-	}
+	LOG_INST_DBG(config->log, "fan reg: 0x%x",config->fan.raw);
+	ret = mfd_max31785_write_byte(config->mfd, config->page,
+		PMBUS_FAN_CONFIG_12, config->fan.raw);
 	if (ret)
 			LOG_INST_DBG(config->log, "MAX31785 FAN_COMMAND_1 write failed");
 
@@ -296,31 +246,33 @@ static int fan_max31785_common_init(const struct device *dev)
 	return 0;
 }
 
-
-
 #define FAN_MAX31785_DEFINE(node_id, id, _source)								\
 	static struct fan_max31785_data fan_data_##id;								\
 														\
 	LOG_INSTANCE_REGISTER(_source, node_id, 4);								\
 	static const struct fan_max31785_config fan_config_##id = {						\
 		.smbus = SMBUS_DT_SPEC_GET(DT_GPARENT(node_id)),						\
-		.mfd = DEVICE_DT_GET(DT_BUS(node_id)),							\
+		.mfd = DEVICE_DT_GET(DT_BUS(node_id)),								\
 		.page = _source,										\
 		.fan.ppr = DT_PROP_OR(node_id, ppr, 2) - 1,							\
 		.fan.enable = 1,							 			\
-		.fan_config.frequency = DT_PROP_OR(node_id, frequency, MAX31785_FAN_PWM_FREQUENCY_25KHZ),	\
-		.fan_config.hyst = DT_PROP_OR(node_id, hyst, MAX31785_FAN_TEMP_HYST_2DEG) - 2,			\
-		.fan_config.tsfo = DT_PROP_OR(node_id, tsfo, MAX31785_FAN_TEMP_FAULT_OVERRIDE_DIS),		\
-		.fan_config.tacho = DT_PROP_OR(node_id, tacho, MAX31785_FAN_TACH_OVERRIDE_DIS),			\
-		.fan_config.ramp_rate = DT_PROP_OR(node_id, ramp_rate, MAX31785_FAN_RAMP_5PERCENT_FAST),	\
-		.fan_config.health_en = DT_PROP_OR(node_id, health_en, MAX31785_FAN_HEALTH_DIS),		\
-		.fan_config.rotor_stuck_hi = DT_PROP_OR(node_id, rotor_hi_lo, MAX31785_FAN_STUCK_LEVEL_LOW),	\
-		.fan_config.rotor_output = DT_PROP_OR(node_id, locked_rotor_en, 0),				\
-		.fan_config.spinup = DT_PROP_OR(node_id, spinup, 0),			   			\
+		.fan.mode = MAX31785_MODE_ENCODE(DT_STRING_UPPER_TOKEN(node_id, mode)),			\
+		.fan_config.frequency = MAX31785_FREQ_ENCODE(DT_PROP_OR(node_id, pwm_frequency, 30)),		\
+		.fan_config.hyst = MAX31785_HYST_ENCODE(DT_PROP_OR(node_id, hyst, 2)),				\
+		.fan_config.tsfo = DT_PROP(node_id, fan_fault_hold_last_value),					\
+		.fan_config.tacho = DT_PROP(node_id, fan_fault_no_ramp),					\
+		.fan_config.ramp_rate = MAX31785_RAMP_ENCODE(DT_PROP_OR(node_id, fan_ramp_time_ds, 600)),	\
+		.fan_config.health_en = DT_PROP(node_id, health_meter_enable),					\
+		.fan_config.rotor_stuck_hi = DT_PROP(node_id, locked_rotor_active_high),			\
+		.fan_config.rotor_output = DT_PROP(node_id, locked_rotor_en),					\
+		.fan_config.dual_tach_en = DT_PROP(node_id, dual_tach_enable),					\
+		.fan_config.spinup = MAX31785_SPIN_ENCODE(DT_PROP_OR(node_id, spinup_revs, 0)),			\
 		.fan_speeds = DT_PROP_OR(node_id, fan_speeds, {0}),						\
 		.fan_temps = DT_PROP_OR(node_id, fan_temps, {0}),						\
 		.mode = DT_STRING_UPPER_TOKEN(node_id, mode),							\
-		.initial_setting = DT_PROP_OR(node_id, initial_setting, 0) * 100,				\
+		.initial_setting = MAX31785_INITIAL_SETTING_ENCODE(						\
+			DT_STRING_UPPER_TOKEN(node_id, mode),							\
+			DT_PROP_OR(node_id, initial_setting, 0)),						\
 		LOG_INSTANCE_PTR_INIT(log, _source, node_id)							\
 	};											   		\
 														\
