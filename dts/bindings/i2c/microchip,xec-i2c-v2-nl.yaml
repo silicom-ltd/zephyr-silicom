@@ -1,0 +1,42 @@
+# Copyright (c) 2026 Silicom Connectivity Solutions, Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Microchip I2C/SMB V2 controller, network-layer (DMA) mode: driven via
+  the controller's hardware Master Command/Completion state machine
+  plus an external DMA channel, instead of the byte-at-a-time
+  Data/Control/Status register interface.
+
+compatible: "microchip,xec-i2c-v2-nl"
+
+include: microchip,xec-i2c-v2.yaml
+
+properties:
+  dmas:
+    required: true
+    description: |
+      DMA channel for the controller's network-layer (hardware
+      block-transfer) state machine. Unlike a UART or SPI peripheral, this
+      controller's Master Transmit Buffer and Master Receive Buffer
+      registers share a single hardware flow-control device number and are
+      never active at the same time (the state machine is either
+      transmitting or receiving, not both), so a single DMA channel is
+      reconfigured between the write and read phases of a transaction
+      rather than using separate "tx"/"rx" channels.
+
+      The phandle's 2nd cell (trigsrc) must be the controller instance's
+      Master network-layer DMA device number; see
+      include/zephyr/dt-bindings/dma/mchp_xec_i2c_dma.h. The 1st cell
+      (channel) is not a free software choice either: this instance's
+      Master state machine is wired to one specific physical DMA channel,
+      which is always numerically equal to the device number (the driver
+      enforces this with a build-time BUILD_ASSERT).
+
+      Example for I2C/SMB instance 0 (master device number 1, so channel
+      must also be 1):
+         dmas = <&dmac MCHP_XEC_I2C_DMA_MTR(0) MCHP_XEC_I2C_DMA_MTR(0)>;
+         dma-names = "mtr";
+
+  dma-names:
+    required: true
+    description: Must be "mtr" (Master network layer transmit/receive, shared channel).
