@@ -17,20 +17,19 @@ config I2C_XEC_V2
 	help
 	  Enable the Microchip XEC I2C V2 driver. This driver uses the
 	  controller's legacy byte-at-a-time register interface, polling the
-	  PIN status bit for every byte transferred. Any instance whose
-	  devicetree node has a "dmas" property is claimed by
-	  I2C_XEC_V2_NL instead, if that option is also enabled.
+	  PIN status bit for every byte transferred. An instance that should
+	  instead be driven by I2C_XEC_V2_NL uses the
+	  "microchip,xec-i2c-v2-nl" compatible rather than this one.
 
 config I2C_XEC_V2_NL
 	bool "XEC Microchip I2C network-layer (DMA) driver"
 	default y
-	depends on DT_HAS_MICROCHIP_XEC_I2C_V2_ENABLED
+	depends on DT_HAS_MICROCHIP_XEC_I2C_V2_NL_ENABLED
 	select DMA
 	help
 	  Enable the Microchip XEC I2C V2 network-layer driver. This driver
 	  uses the controller's hardware Master Command state machine and an
 	  external DMA channel to move transaction data, signaling completion
 	  with one or two interrupts per transaction instead of polling every
-	  byte. It only claims instances whose devicetree node has a "dmas"
-	  property (dma-names = "mtr"); instances without one are left for
-	  I2C_XEC_V2 to claim.
+	  byte. It claims instances whose devicetree node uses the
+	  "microchip,xec-i2c-v2-nl" compatible.

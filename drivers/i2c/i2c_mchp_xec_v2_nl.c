@@ -22,7 +22,7 @@
  * not implemented.
  */
 
-#define DT_DRV_COMPAT microchip_xec_i2c_v2
+#define DT_DRV_COMPAT microchip_xec_i2c_v2_nl
 
 #include <zephyr/kernel.h>
 #include <soc.h>
@@ -120,7 +120,7 @@ static const struct xec_speed_cfg {
 	},
 };
 
-static int __maybe_unused i2c_xec_nl_reset_config(const struct device *dev)
+static int i2c_xec_nl_reset_config(const struct device *dev)
 {
 	const struct i2c_xec_nl_config *cfg = dev->config;
 	struct i2c_xec_nl_data *data = dev->data;
@@ -161,7 +161,7 @@ static int __maybe_unused i2c_xec_nl_reset_config(const struct device *dev)
 	return 0;
 }
 
-static void __maybe_unused i2c_xec_nl_isr(const struct device *dev)
+static void i2c_xec_nl_isr(const struct device *dev)
 {
 	const struct i2c_xec_nl_config *cfg = dev->config;
 	struct i2c_xec_nl_data *data = dev->data;
@@ -186,7 +186,7 @@ static void __maybe_unused i2c_xec_nl_isr(const struct device *dev)
  * READ_COUNT, START0/STARTN/STOP and MRUN/MPROCEED even when only MPROCEED
  * changes, per the data sheet's Master Command Register description).
  */
-static int __maybe_unused i2c_xec_nl_run_phase(const struct device *dev,
+static int i2c_xec_nl_run_phase(const struct device *dev,
 						struct dma_block_config *blocks,
 						size_t nblocks, uint32_t mstr_cmd)
 {
@@ -247,7 +247,7 @@ static int __maybe_unused i2c_xec_nl_run_phase(const struct device *dev,
 	return I2C_XEC_NL_OK;
 }
 
-static int __maybe_unused i2c_xec_nl_transfer(const struct device *dev, struct i2c_msg *msgs,
+static int i2c_xec_nl_transfer(const struct device *dev, struct i2c_msg *msgs,
 						uint8_t num_msgs, uint16_t addr)
 {
 	const struct i2c_xec_nl_config *cfg = dev->config;
@@ -346,7 +346,7 @@ done:
 	}
 }
 
-static int __maybe_unused i2c_xec_nl_configure(const struct device *dev, uint32_t dev_config)
+static int i2c_xec_nl_configure(const struct device *dev, uint32_t dev_config)
 {
 	struct i2c_xec_nl_data *data = dev->data;
 
@@ -367,12 +367,12 @@ static int __maybe_unused i2c_xec_nl_configure(const struct device *dev, uint32_
 	return i2c_xec_nl_reset_config(dev);
 }
 
-static const struct i2c_driver_api __maybe_unused i2c_xec_nl_driver_api = {
+static const struct i2c_driver_api i2c_xec_nl_driver_api = {
 	.configure = i2c_xec_nl_configure,
 	.transfer = i2c_xec_nl_transfer,
 };
 
-static int __maybe_unused i2c_xec_nl_init(const struct device *dev)
+static int i2c_xec_nl_init(const struct device *dev)
 {
 	const struct i2c_xec_nl_config *cfg = dev->config;
 	struct i2c_xec_nl_data *data = dev->data;
@@ -412,7 +412,7 @@ static int __maybe_unused i2c_xec_nl_init(const struct device *dev)
 #define I2C_XEC_NL_DEVICE(n)							\
 	BUILD_ASSERT(DT_INST_DMAS_CELL_BY_NAME(n, mtr, channel) ==		\
 		     DT_INST_DMAS_CELL_BY_NAME(n, mtr, trigsrc),		\
-		     "microchip,xec-i2c-v2 instance's \"mtr\" dmas channel "	\
+		     "microchip,xec-i2c-v2-nl instance's \"mtr\" dmas channel "	\
 		     "must equal its hardware flow-control device number "	\
 		     "(see include/zephyr/dt-bindings/dma/mchp_xec_i2c_dma.h)"); \
 	PINCTRL_DT_INST_DEFINE(n);						\
@@ -448,7 +448,4 @@ static int __maybe_unused i2c_xec_nl_init(const struct device *dev)
 		irq_enable(DT_INST_IRQN(n));					\
 	}
 
-#define I2C_XEC_NL_DEVICE_COND(n)						\
-	COND_CODE_1(DT_INST_DMAS_HAS_NAME(n, mtr), (I2C_XEC_NL_DEVICE(n)), ())
-
-DT_INST_FOREACH_STATUS_OKAY(I2C_XEC_NL_DEVICE_COND)
+DT_INST_FOREACH_STATUS_OKAY(I2C_XEC_NL_DEVICE)
