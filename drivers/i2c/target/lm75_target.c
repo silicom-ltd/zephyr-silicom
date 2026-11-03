@@ -53,19 +53,27 @@ static struct sensor_value lm75_target_failsafe_value(int32_t failsafe_millic)
 static void lm75_target_encode_temp(struct i2c_lm75_target_data *data,
 				     const struct sensor_value *temp)
 {
-	int rounded;
-	int bitmask = 0;
-	int resolution = 3;
-	int modulo = 500000;
-
-	data->lm75_regs[0] = temp->val1;
-	rounded = ROUND_DOWN(temp->val2, 125000);
-	while (resolution > 0) {
-		bitmask |= (rounded / modulo) ? (1 << (resolution + 4)) : 0;
-		resolution--;
-		modulo >>= 1;
+	/*
+	 * The 12-bit register is a single two's-complement value with an LSB
+	 * of 0.0625C (datasheet Table 7-1): Byte 1 holds the integer part,
+	 * Byte 2 holds the fractional part (0-15 sixteenths) in its upper
+	 * nibble, lower nibble always 0. sensor_value instead splits
+	 * val1/val2 by truncating toward zero with matching signs (e.g. -1.5
+	 * is val1=-1, val2=-500000), so a negative value with a nonzero
+	 * fraction needs the integer part floored by one and the fraction
+	 * taken as the distance up from that floor, to match the register's
+	 * combined two's-complement meaning.
+	 */
+	if (temp->val2 == 0) {
+		data->lm75_regs[0] = temp->val1;
+		data->lm75_regs[1] = 0;
+	} else if (temp->val2 > 0) {
+		data->lm75_regs[0] = temp->val1;
+		data->lm75_regs[1] = (temp->val2 / 62500) << 4;
+	} else {
+		data->lm75_regs[0] = temp->val1 - 1;
+		data->lm75_regs[1] = ((1000000 + temp->val2) / 62500) << 4;
 	}
-	data->lm75_regs[1] = bitmask;
 }
 
 /*
