@@ -143,7 +143,7 @@ static int peci_get_temp(const struct device *dev, float *temperature)
 	raw_cpu_temp = (int16_t)(packet.rx_buffer.buf[PECI_GET_TEMP_LSB] |
 			(int16_t)((packet.rx_buffer.buf[PECI_GET_TEMP_MSB] << 8) & 0xFF00));
 
-	if (raw_cpu_temp == 0x8000) {
+	if ((uint16_t)raw_cpu_temp == 0x8000) {
 		LOG_ERR("Invalid PECI temp 0x8000");
 		*temperature = PECI_SAFE_TEMP;
 		return -1;
