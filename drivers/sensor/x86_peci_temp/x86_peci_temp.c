@@ -7,6 +7,7 @@
 
 #define DT_DRV_COMPAT x86_peci_temp
 
+#include <stdlib.h>
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
@@ -15,7 +16,7 @@
 #include <zephyr/pm/device.h>
 
 #include <zephyr/logging/log.h>
-LOG_MODULE_REGISTER(x86_peci_temp, CONFIG_SENSOR_LOG_LEVEL);
+LOG_MODULE_REGISTER(x86_peci_temp, CONFIG_X86_PECI_TEMP_LOG_LEVEL);
 
 #define PECI_HOST_ADDR		0x30u
 #define PECI_CONFIGINDEX_TJMAX	16u
@@ -115,6 +116,8 @@ static int peci_get_temp(const struct device *dev, float *temperature)
 	const struct peci_dev_config *config = dev->config;
 	struct x86_peci_temp_data *data = dev->data;
 	int16_t raw_cpu_temp;
+	uint16_t raw_reading;
+	int32_t milli_c;
 	double tmp;
 	uint8_t rx_fcs;
 	int ret;
@@ -149,6 +152,7 @@ static int peci_get_temp(const struct device *dev, float *temperature)
 		return -1;
 	}
 
+	raw_reading = (uint16_t)raw_cpu_temp;
 	raw_cpu_temp = ~raw_cpu_temp + 1;
 	*temperature = (float)(raw_cpu_temp & 0x3F) / 64;
 	raw_cpu_temp = (raw_cpu_temp >> 6);
@@ -156,7 +160,11 @@ static int peci_get_temp(const struct device *dev, float *temperature)
 	tmp = (double)data->tjmax - tmp;
 	*temperature = (float)tmp;
 
-	LOG_DBG("PECI CPU temp %f",(double)*temperature);
+	/* No float printf support on this target: print milli-degrees C */
+	milli_c = (int32_t)(*temperature * 1000.0f);
+	LOG_DBG("PECI CPU temp %s%d.%03d C (raw 0x%04x, TjMax %u C)",
+		milli_c < 0 ? "-" : "", abs(milli_c) / 1000, abs(milli_c) % 1000,
+		raw_reading, data->tjmax);
 
 	return 0;
 }
