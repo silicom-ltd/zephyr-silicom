@@ -10,6 +10,14 @@ config I2C_LM75_TARGET
 	help
 	  Enable virtual I2C Target LM75 driver
 
+if I2C_LM75_TARGET
+
+module = I2C_LM75_TARGET
+module-str = lm75_target
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # I2C_LM75_TARGET
+
 config LM75_TARGET_INIT_PRIORITY
 	int "LM75 target init priority"
 	default 91
