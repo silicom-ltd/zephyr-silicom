@@ -41,7 +41,7 @@ struct dts_max31785_common_config {
 };
 
 struct dts_max31785_data {
-	uint16_t temp;
+	int temp;
 };
 
 union mfr_temp_sensor_config {
@@ -63,6 +63,33 @@ struct dts_max31785_config {
 	LOG_INSTANCE_PTR_DECLARE(log);
 };	
 
+/*
+ * PMBus DIRECT format (m=1, b=0, R=2 for READ_TEMP_1, per the MAX31785
+ * datasheet): X = (Y - b) / (m * 10^-R). Same calculation as the other
+ * PMBus devices' temperature drivers (e.g. mpq8785_temp.c), just with
+ * fixed coefficients instead of devicetree-configurable ones. Y is a
+ * signed 16-bit two's-complement value. Converts to millicelsius.
+ */
+static int val2data(const struct device *dev, uint16_t data)
+{
+	int m = 1;
+	int b = 0;
+	int R = -2;
+	int ret = (int16_t)data;
+
+	R += 3;
+	b *= 1000;
+
+	while (R > 0) {
+		ret *= 10;
+		R--;
+	}
+
+	ret = (ret - b) / m;
+
+	return ret;
+}
+
 static int dts_max31785_temp_sample_fetch(const struct device *dev, enum sensor_channel)
 {
 	const struct dts_max31785_config *config = dev->config;
@@ -76,8 +103,8 @@ static int dts_max31785_temp_sample_fetch(const struct device *dev, enum sensor_
 	if (ret)
 		return -EINVAL;
 
-	data->temp = value;
-	
+	data->temp = val2data(dev, value);
+
 	return 0;
 }
 
@@ -85,8 +112,8 @@ static int dts_max31785_temp_channel_get(const struct device *dev, enum sensor_c
 {
 	struct dts_max31785_data *data = dev->data;
 
-	val->val1 = data->temp / 100;
-	val->val2 = (data->temp % 100) * 100;
+	val->val1 = data->temp / 1000;
+	val->val2 = (data->temp % 1000) * 1000;
 
 	return 0;
 }
