@@ -7,3 +7,11 @@ config X86_PECI_TEMP
 	depends on DT_HAS_X86_PECI_TEMP_ENABLED
 	help
 	  Enable driver for PECI temperature sensor on X86 targets.
+
+if X86_PECI_TEMP
+
+module = X86_PECI_TEMP
+module-str = x86_peci_temp
+source "subsys/logging/Kconfig.template.log_config"
+
+endif # X86_PECI_TEMP
