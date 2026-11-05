@@ -129,15 +129,18 @@ static int lm75_target_read_requested(struct i2c_target_config *config,
 						struct i2c_lm75_target_data,
 						config);
 
-	if (data->msb == true) {
-		data->msb = false;
-		*val = data->lm75_regs[data->reg_ptr*2];
-	} else {
-		*val = data->lm75_regs[data->reg_ptr*2+1];
-		data->msb = true;
-	}
-
-	/* Increment will be done in the read_processed callback */
+	/*
+	 * Called once per transaction, at a fresh START (repeated or not),
+	 * to supply the *first* byte -- never mid-stream (see i2c.h). Always
+	 * start at the MSB rather than branching on data->msb, which can be
+	 * left stale (false) by a prior transaction that stopped after an
+	 * odd number of bytes, e.g. a master that reads only the MSB of a
+	 * 2-byte register (explicitly valid per the LM75/DS75LV datasheets)
+	 * or a 1-byte Configuration register read -- otherwise the next
+	 * independent read transaction would hand back the LSB first.
+	 */
+	*val = data->lm75_regs[data->reg_ptr*2];
+	data->msb = false;
 
 	return 0;
 }
@@ -155,8 +158,14 @@ static int lm75_target_write_received(struct i2c_target_config *config,
 	 */
 	if (data->write_reg) {
 		data->reg_ptr = val;
-		if (val != 1)
-			data->msb = true;
+		/*
+		 * Always resync to the MSB slot here, regardless of which
+		 * register this points to (including Configuration, a
+		 * single-byte register): otherwise a stale data->msb left
+		 * over from an odd-byte-count prior transaction would land
+		 * the first data byte of this one in the wrong slot too.
+		 */
+		data->msb = true;
 		data->write_reg = false;
 	} else if (data->reg_ptr == 0) {
 		return 0;
