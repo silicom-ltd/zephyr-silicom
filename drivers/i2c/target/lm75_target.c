@@ -10,15 +10,14 @@
 #include <zephyr/kernel.h>
 #include <errno.h>
 #include <zephyr/drivers/i2c.h>
+#include <stdlib.h>
 #include <string.h>
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/drivers/i2c/target/lm75.h>
 #include <zephyr/pm/device.h>
 
-#define LOG_LEVEL CONFIG_I2C_LOG_LEVEL
 #include <zephyr/logging/log.h>
-//LOG_MODULE_REGISTER(i2c_target, CONFIG_I2C_LOG_LEVEL);
-LOG_MODULE_REGISTER(i2c_target, 4);
+LOG_MODULE_REGISTER(lm75_target, CONFIG_I2C_LM75_TARGET_LOG_LEVEL);
 
 struct i2c_lm75_target_data {
 	struct i2c_target_config config;
@@ -53,19 +52,36 @@ static struct sensor_value lm75_target_failsafe_value(int32_t failsafe_millic)
 static void lm75_target_encode_temp(struct i2c_lm75_target_data *data,
 				     const struct sensor_value *temp)
 {
-	int rounded;
-	int bitmask = 0;
-	int resolution = 3;
-	int modulo = 500000;
-
-	data->lm75_regs[0] = temp->val1;
-	rounded = ROUND_DOWN(temp->val2, 125000);
-	while (resolution > 0) {
-		bitmask |= (rounded / modulo) ? (1 << (resolution + 4)) : 0;
-		resolution--;
-		modulo >>= 1;
+	/*
+	 * The 12-bit register is a single two's-complement value with an LSB
+	 * of 0.0625C (datasheet Table 7-1): Byte 1 holds the integer part,
+	 * Byte 2 holds the fractional part (0-15 sixteenths) in its upper
+	 * nibble, lower nibble always 0. sensor_value instead splits
+	 * val1/val2 by truncating toward zero with matching signs (e.g. -1.5
+	 * is val1=-1, val2=-500000), so a negative value with a nonzero
+	 * fraction needs the integer part floored by one and the fraction
+	 * taken as the distance up from that floor, to match the register's
+	 * combined two's-complement meaning.
+	 */
+	if (temp->val2 == 0) {
+		data->lm75_regs[0] = temp->val1;
+		data->lm75_regs[1] = 0;
+	} else if (temp->val2 > 0) {
+		data->lm75_regs[0] = temp->val1;
+		data->lm75_regs[1] = (temp->val2 / 62500) << 4;
+	} else {
+		data->lm75_regs[0] = temp->val1 - 1;
+		data->lm75_regs[1] = ((1000000 + temp->val2) / 62500) << 4;
 	}
-	data->lm75_regs[1] = bitmask;
+
+	/* Decode the register pair back (1/16 C steps) to show what the host reads */
+	int16_t sixteenths = (int16_t)(((uint16_t)data->lm75_regs[0] << 8) |
+				      data->lm75_regs[1]) >> 4;
+	int32_t milli_c = (sixteenths * 1000) / 16;
+
+	LOG_DBG("lm75 regs 0x%02x 0x%02x -> %s%d.%04d C",
+		data->lm75_regs[0], data->lm75_regs[1], milli_c < 0 ? "-" : "",
+		abs(milli_c) / 1000, (abs(sixteenths) % 16) * 625);
 }
 
 /*
@@ -87,7 +103,10 @@ static void get_target_sensor_temp(struct k_work *work)
 
 	lm75_target_encode_temp(data, &temp);
 
-	LOG_DBG("lm75 target sensor read %d.%d", temp.val1, temp.val2);
+	/* val2 is millionths: zero-pad it, and print the sign once */
+	LOG_DBG("lm75 target sensor read %s%d.%06d",
+		(temp.val1 < 0 || temp.val2 < 0) ? "-" : "",
+		abs(temp.val1), abs(temp.val2));
 
 	k_work_reschedule(dwork, K_MSEC(500));
 }
@@ -110,15 +129,18 @@ static int lm75_target_read_requested(struct i2c_target_config *config,
 						struct i2c_lm75_target_data,
 						config);
 
-	if (data->msb == true) {
-		data->msb = false;
-		*val = data->lm75_regs[data->reg_ptr*2];
-	} else {
-		*val = data->lm75_regs[data->reg_ptr*2+1];
-		data->msb = true;
-	}
-
-	/* Increment will be done in the read_processed callback */
+	/*
+	 * Called once per transaction, at a fresh START (repeated or not),
+	 * to supply the *first* byte -- never mid-stream (see i2c.h). Always
+	 * start at the MSB rather than branching on data->msb, which can be
+	 * left stale (false) by a prior transaction that stopped after an
+	 * odd number of bytes, e.g. a master that reads only the MSB of a
+	 * 2-byte register (explicitly valid per the LM75/DS75LV datasheets)
+	 * or a 1-byte Configuration register read -- otherwise the next
+	 * independent read transaction would hand back the LSB first.
+	 */
+	*val = data->lm75_regs[data->reg_ptr*2];
+	data->msb = false;
 
 	return 0;
 }
@@ -136,8 +158,14 @@ static int lm75_target_write_received(struct i2c_target_config *config,
 	 */
 	if (data->write_reg) {
 		data->reg_ptr = val;
-		if (val != 1)
-			data->msb = true;
+		/*
+		 * Always resync to the MSB slot here, regardless of which
+		 * register this points to (including Configuration, a
+		 * single-byte register): otherwise a stale data->msb left
+		 * over from an odd-byte-count prior transaction would land
+		 * the first data byte of this one in the wrong slot too.
+		 */
+		data->msb = true;
 		data->write_reg = false;
 	} else if (data->reg_ptr == 0) {
 		return 0;
