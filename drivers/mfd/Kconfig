@@ -35,5 +35,6 @@ source "drivers/mfd/Kconfig.mpq8785"
 source "drivers/mfd/Kconfig.crps"
 source "drivers/mfd/Kconfig.mp2928"
 source "drivers/mfd/Kconfig.mp2985"
+source "drivers/mfd/Kconfig.mpq8655"
 
 endif # MFD
