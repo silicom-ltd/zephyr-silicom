@@ -1,0 +1,19 @@
+# Copyright (c) 2026 Silicom Connectivity Solutions, Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+config MFD_MPQ8655
+	bool "Monolithic Power Systems MPQ8655 Digital Controller"
+	default y
+	depends on DT_HAS_MPS_MPQ8655_ENABLED
+	select I2C
+	select SMBUS
+	select PMBUS
+	help
+	  Enable driver for MPS MPQ8655
+
+config MFD_MPQ8655_INIT_PRIORITY
+	int "MPQ8655 MFD initialization priority"
+	default MFD_INIT_PRIORITY
+	depends on MFD_MPQ8655
+	help
+	  Multi-function device initialization priority for MPQ8655.

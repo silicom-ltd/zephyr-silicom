@@ -1,0 +1,14 @@
+# Copyright (c) 2026 Silicom Connectivity Solutions, Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+description: Monolithic Power Systems MPQ8655 step-down converter PMBus MFD device
+
+compatible: "mps,mpq8655"
+
+include: smbus-device.yaml
+
+bus: mpq8655
+
+properties:
+  reg:
+    required: true

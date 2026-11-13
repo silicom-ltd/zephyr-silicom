@@ -1,0 +1,10 @@
+# Copyright (c) 2026 Silicom Connectivity Solutions, Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+description: TEMP measurement of PMBus device for MPQ8655
+
+compatible: "mps,mpq8655-temp"
+
+include: [pmbus.yaml, sensor-device.yaml]
+
+on-bus: mpq8655
