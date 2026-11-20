@@ -15,6 +15,7 @@
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/drivers/i2c/target/lm75.h>
 #include <zephyr/pm/device.h>
+#include <zephyr/sys/atomic.h>
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(lm75_target, CONFIG_I2C_LM75_TARGET_LOG_LEVEL);
@@ -27,6 +28,8 @@ struct i2c_lm75_target_data {
 	uint8_t lm75_regs[8];
 	bool msb;
 	bool write_reg;
+	/* Latest poll read target_sensor successfully (see lm75_target_sensor_valid()) */
+	atomic_t sensor_valid;
 };
 
 struct i2c_lm75_target_config {
@@ -96,17 +99,40 @@ static void get_target_sensor_temp(struct k_work *work)
 		CONTAINER_OF(dwork, struct i2c_lm75_target_data, sensor_work);
 	const struct i2c_lm75_target_config *config = data->dev->config;
 	struct sensor_value temp;
+	const char *note = "";
 	int ret;
 
 	ret = sensor_sample_fetch_chan(config->temp_sensor, SENSOR_CHAN_DIE_TEMP);
-	sensor_channel_get(config->temp_sensor, SENSOR_CHAN_DIE_TEMP, &temp);
+	if (ret == 0) {
+		ret = sensor_channel_get(config->temp_sensor, SENSOR_CHAN_DIE_TEMP, &temp);
+	}
+
+	if (ret == -EBADMSG &&
+	    sensor_channel_get(config->temp_sensor, SENSOR_CHAN_DIE_TEMP, &temp) == 0) {
+		/*
+		 * target_sensor answered but reported a sensor error, and
+		 * provides its own safe value through channel_get (e.g.
+		 * x86_peci_temp on a 0x8000 reply): serve that value.
+		 */
+		note = " (sensor error, sensor's safe value)";
+	} else if (ret != 0) {
+		/*
+		 * No reading this poll: serve the failsafe value rather than
+		 * whatever target_sensor last cached (stale, or 0 if it has
+		 * never been read since reset).
+		 */
+		temp = lm75_target_failsafe_value(config->failsafe_millic);
+		note = " (read failed, failsafe)";
+	}
 
 	lm75_target_encode_temp(data, &temp);
+	/* Only a real reading counts as valid (silicom,fan-reset-hold waits on it) */
+	atomic_set(&data->sensor_valid, ret == 0);
 
 	/* val2 is millionths: zero-pad it, and print the sign once */
-	LOG_DBG("lm75 target sensor read %s%d.%06d",
+	LOG_DBG("lm75 target sensor read %s%d.%06d%s",
 		(temp.val1 < 0 || temp.val2 < 0) ? "-" : "",
-		abs(temp.val1), abs(temp.val2));
+		abs(temp.val1), abs(temp.val2), note);
 
 	k_work_reschedule(dwork, K_MSEC(500));
 }
@@ -283,6 +309,13 @@ static int i2c_lm75_target_init(const struct device *dev)
 	return 0;
 }
 
+bool lm75_target_sensor_valid(const struct device *dev)
+{
+	struct i2c_lm75_target_data *data = dev->data;
+
+	return atomic_get(&data->sensor_valid) != 0;
+}
+
 #ifdef CONFIG_PM_DEVICE
 /*
  * TURN_OFF/TURN_ON come from the power domain this node sits on: the
@@ -304,6 +337,7 @@ static int lm75_target_pm_action(const struct device *dev,
 		struct sensor_value failsafe = lm75_target_failsafe_value(config->failsafe_millic);
 
 		k_work_cancel_delayable(&data->sensor_work);
+		atomic_set(&data->sensor_valid, 0);
 		/*
 		 * target_sensor loses power along with this node, so its last
 		 * sample is stale; report the configured failsafe value

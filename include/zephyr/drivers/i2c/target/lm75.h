@@ -12,6 +12,9 @@
 #ifndef ZEPHYR_INCLUDE_DRIVERS_I2C_TARGET_LM75_H_
 #define ZEPHYR_INCLUDE_DRIVERS_I2C_TARGET_LM75_H_
 
+#include <stdbool.h>
+#include <zephyr/device.h>
+
 /**
  * @brief I2C LM75 Target Driver API
  * @defgroup i2c_lm75_target_api I2C LM75 Target Driver API
@@ -57,6 +60,18 @@ int eeprom_target_read(const struct device *dev, uint8_t *eeprom_data,
  * @retval -ENOSYS If target mode is not implemented
  */
 int eeprom_target_set_addr(const struct device *dev, uint8_t addr);
+
+/**
+ * @brief Whether the LM75 target is serving a real reading
+ *
+ * True when the latest poll (every 500 ms) read the backing target-sensor
+ * successfully. False before the first successful poll, after a failed
+ * poll, and while the device is powered off (it then serves the failsafe
+ * value).
+ *
+ * @param dev Pointer to the device structure for the driver instance.
+ */
+bool lm75_target_sensor_valid(const struct device *dev);
 
 /**
  * @}

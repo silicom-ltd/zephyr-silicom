@@ -18,7 +18,11 @@ properties:
     type: int
     default: 32000
     description: |
-      Temperature, in millidegrees Celsius, to report over I2C while the
-      power domain supplying target-sensor is off (PM_DEVICE_ACTION_TURN_OFF)
-      and target-sensor can no longer be read. Defaults to 32000
-      (32.000 deg C).
+      Temperature, in millidegrees Celsius, to report over I2C whenever there
+      is no valid target-sensor reading: before the first successful poll,
+      after any failed poll, and while the power domain supplying
+      target-sensor is off (PM_DEVICE_ACTION_TURN_OFF). Exception: if
+      target-sensor's fetch fails with -EBADMSG (it answered with a sensor
+      error) and it still provides a value through channel_get, that value
+      is served instead (x86_peci_temp: 72 deg C on a 0x8000 reply).
+      Defaults to 32000 (32.000 deg C).
