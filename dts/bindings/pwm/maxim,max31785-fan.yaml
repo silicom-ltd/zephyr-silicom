@@ -11,6 +11,14 @@ on-bus: max31785
 
 child-binding:
   properties:
+    zephyr,deferred-init:
+      type: boolean
+      description: |
+        Do not initialize this device at boot; the application initializes
+        it later with device_init() (standard Zephyr deferred init, declared
+        here because this child-binding does not include base.yaml). Used
+        when the MAX31785 is held in reset at boot.
+
     page:
       required: true
       type: int
