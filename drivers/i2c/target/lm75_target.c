@@ -36,6 +36,8 @@ struct i2c_lm75_target_data {
 	 */
 	struct sensor_value last_good;
 	atomic_t have_last_good;
+	/* Cleared on TURN_OFF: a poll still running then discards its result */
+	atomic_t polling;
 };
 
 struct i2c_lm75_target_config {
@@ -96,7 +98,8 @@ static void lm75_target_encode_temp(struct i2c_lm75_target_data *data,
 /*
  * Runs in the system workqueue thread, not ISR context (unlike the k_timer
  * expiry function this replaces). Reschedules itself every 500ms to keep
- * polling the backing sensor for as long as the device exists.
+ * polling the backing sensor while polling is enabled (from init until
+ * TURN_OFF, and again from TURN_ON).
  */
 static void get_target_sensor_temp(struct k_work *work)
 {
@@ -111,6 +114,15 @@ static void get_target_sensor_temp(struct k_work *work)
 	ret = sensor_sample_fetch_chan(config->temp_sensor, SENSOR_CHAN_DIE_TEMP);
 	if (ret == 0) {
 		ret = sensor_channel_get(config->temp_sensor, SENSOR_CHAN_DIE_TEMP, &temp);
+	}
+
+	/*
+	 * TURN_OFF can arrive while this poll is running (it cancels only a
+	 * pending poll, not one in progress): it has already served the
+	 * failsafe value, so drop this result and do not re-arm.
+	 */
+	if (!atomic_get(&data->polling)) {
+		return;
 	}
 
 	/*
@@ -319,6 +331,7 @@ static int i2c_lm75_target_init(const struct device *dev)
 
 	data->dev = dev;
 	k_work_init_delayable(&data->sensor_work, get_target_sensor_temp);
+	atomic_set(&data->polling, 1);
 	k_work_schedule(&data->sensor_work, K_MSEC(500));
 
 	return 0;
@@ -335,7 +348,9 @@ bool lm75_target_sensor_valid(const struct device *dev)
 /*
  * TURN_OFF/TURN_ON come from the power domain this node sits on: the
  * backing target_sensor loses power along with it, so stop polling it
- * while off and resume once power is back.
+ * while off and resume once power is back. TURN_OFF cancels a pending poll
+ * without waiting; a poll already running finishes its fetch, then sees
+ * polling cleared, discards the result and does not re-arm.
  */
 static int lm75_target_pm_action(const struct device *dev,
 				  enum pm_device_action action)
@@ -351,6 +366,7 @@ static int lm75_target_pm_action(const struct device *dev,
 	case PM_DEVICE_ACTION_TURN_OFF: {
 		struct sensor_value failsafe = lm75_target_failsafe_value(config->failsafe_millic);
 
+		atomic_set(&data->polling, 0);
 		k_work_cancel_delayable(&data->sensor_work);
 		atomic_set(&data->sensor_valid, 0);
 		/* The last reading predates the power loss: never serve it again */
@@ -364,6 +380,7 @@ static int lm75_target_pm_action(const struct device *dev,
 		break;
 	}
 	case PM_DEVICE_ACTION_TURN_ON:
+		atomic_set(&data->polling, 1);
 		k_work_reschedule(&data->sensor_work, K_MSEC(500));
 		break;
 	default:
