@@ -30,6 +30,12 @@ struct i2c_lm75_target_data {
 	bool write_reg;
 	/* Latest poll read target_sensor successfully (see lm75_target_sensor_valid()) */
 	atomic_t sensor_valid;
+	/*
+	 * Latest successful reading, served when a poll fails with a
+	 * transient error; have_last_good is cleared on TURN_OFF.
+	 */
+	struct sensor_value last_good;
+	atomic_t have_last_good;
 };
 
 struct i2c_lm75_target_config {
@@ -107,22 +113,31 @@ static void get_target_sensor_temp(struct k_work *work)
 		ret = sensor_channel_get(config->temp_sensor, SENSOR_CHAN_DIE_TEMP, &temp);
 	}
 
-	if (ret == -EBADMSG &&
-	    sensor_channel_get(config->temp_sensor, SENSOR_CHAN_DIE_TEMP, &temp) == 0) {
-		/*
-		 * target_sensor answered but reported a sensor error, and
-		 * provides its own safe value through channel_get (e.g.
-		 * x86_peci_temp on a 0x8000 reply): serve that value.
-		 */
+	/*
+	 * What to serve when there is no reading this poll (documented with
+	 * failsafe-temp-millic in lm75-base.yaml):
+	 *  -ENODEV:  target_sensor is not ready (e.g. x86_peci_temp before the
+	 *            CPU is up): serve failsafe-temp-millic.
+	 *  -EBADMSG: target_sensor answered with a sensor error; if it still
+	 *            provides a value through channel_get (x86_peci_temp: its
+	 *            safe temperature on a 0x8000 reply), serve that value.
+	 *  other:    transient failure while target_sensor should be readable
+	 *            (e.g. a PECI transfer error): keep serving the last good
+	 *            reading, or failsafe-temp-millic if there is none yet.
+	 */
+	if (ret == 0) {
+		data->last_good = temp;
+		atomic_set(&data->have_last_good, 1);
+	} else if (ret == -EBADMSG &&
+		   sensor_channel_get(config->temp_sensor, SENSOR_CHAN_DIE_TEMP, &temp) == 0) {
 		note = " (sensor error, sensor's safe value)";
-	} else if (ret != 0) {
-		/*
-		 * No reading this poll: serve the failsafe value rather than
-		 * whatever target_sensor last cached (stale, or 0 if it has
-		 * never been read since reset).
-		 */
+	} else if (ret != -ENODEV && atomic_get(&data->have_last_good)) {
+		temp = data->last_good;
+		note = " (read failed, last good reading)";
+	} else {
 		temp = lm75_target_failsafe_value(config->failsafe_millic);
-		note = " (read failed, failsafe)";
+		note = (ret == -ENODEV) ? " (sensor not ready, failsafe)" :
+					  " (read failed, no reading yet, failsafe)";
 	}
 
 	lm75_target_encode_temp(data, &temp);
@@ -130,9 +145,9 @@ static void get_target_sensor_temp(struct k_work *work)
 	atomic_set(&data->sensor_valid, ret == 0);
 
 	/* val2 is millionths: zero-pad it, and print the sign once */
-	LOG_DBG("lm75 target sensor read %s%d.%06d%s",
+	LOG_DBG("lm75 target sensor read %s%d.%06d%s ret=%d",
 		(temp.val1 < 0 || temp.val2 < 0) ? "-" : "",
-		abs(temp.val1), abs(temp.val2), note);
+		abs(temp.val1), abs(temp.val2), note, ret);
 
 	k_work_reschedule(dwork, K_MSEC(500));
 }
@@ -338,6 +353,8 @@ static int lm75_target_pm_action(const struct device *dev,
 
 		k_work_cancel_delayable(&data->sensor_work);
 		atomic_set(&data->sensor_valid, 0);
+		/* The last reading predates the power loss: never serve it again */
+		atomic_set(&data->have_last_good, 0);
 		/*
 		 * target_sensor loses power along with this node, so its last
 		 * sample is stale; report the configured failsafe value

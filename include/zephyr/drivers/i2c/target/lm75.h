@@ -65,9 +65,10 @@ int eeprom_target_set_addr(const struct device *dev, uint8_t addr);
  * @brief Whether the LM75 target is serving a real reading
  *
  * True when the latest poll (every 500 ms) read the backing target-sensor
- * successfully. False before the first successful poll, after a failed
- * poll, and while the device is powered off (it then serves the failsafe
- * value).
+ * successfully. False before the first successful poll, after any failed
+ * poll (even one where the last good reading is carried forward), and while
+ * the device is powered off. See failsafe-temp-millic in lm75-base.yaml for
+ * what is served in each case.
  *
  * @param dev Pointer to the device structure for the driver instance.
  */

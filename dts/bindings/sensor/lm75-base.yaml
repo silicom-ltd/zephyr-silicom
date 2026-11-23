@@ -18,11 +18,24 @@ properties:
     type: int
     default: 32000
     description: |
-      Temperature, in millidegrees Celsius, to report over I2C whenever there
-      is no valid target-sensor reading: before the first successful poll,
-      after any failed poll, and while the power domain supplying
-      target-sensor is off (PM_DEVICE_ACTION_TURN_OFF). Exception: if
-      target-sensor's fetch fails with -EBADMSG (it answered with a sensor
-      error) and it still provides a value through channel_get, that value
-      is served instead (x86_peci_temp: 72 deg C on a 0x8000 reply).
+      Temperature, in millidegrees Celsius, to report over I2C when there is
+      no valid target-sensor reading and none can be carried forward.
       Defaults to 32000 (32.000 deg C).
+
+      What is served when a poll of target-sensor fails depends on the
+      error its sample fetch returns:
+        -ENODEV   target-sensor is not ready (e.g. x86_peci_temp before the
+                  CPU is up): this failsafe value.
+        -EBADMSG  target-sensor answered with a sensor error. If its
+                  channel_get still succeeds, the value it returns is served
+                  (x86_peci_temp: 72 deg C on a 0x8000 reply); otherwise the
+                  error is handled like any other.
+        other     transient failure (e.g. a PECI transfer error): the last
+                  successful reading, or this failsafe value if there has
+                  been none since boot or since the power domain was last
+                  turned off.
+      This failsafe value is also served before the first poll and while
+      the power domain supplying target-sensor is off
+      (PM_DEVICE_ACTION_TURN_OFF). A target-sensor that returns -EBADMSG
+      must provide its safe value through channel_get for the -EBADMSG case
+      to apply.
