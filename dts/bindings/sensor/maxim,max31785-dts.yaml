@@ -8,6 +8,13 @@ compatible: "maxim,max31785-dts"
 on-bus: max31785
 
 child-binding:
+  # zephyr,deferred-init: lets the application hold the MAX31785 in reset
+  # at boot and initialize these devices later with device_init()
+  include:
+    - name: base.yaml
+      property-allowlist:
+        - zephyr,deferred-init
+
   properties:
     fans:
       type: phandles

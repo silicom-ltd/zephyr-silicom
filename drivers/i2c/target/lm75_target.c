@@ -15,6 +15,7 @@
 #include <zephyr/drivers/sensor.h>
 #include <zephyr/drivers/i2c/target/lm75.h>
 #include <zephyr/pm/device.h>
+#include <zephyr/sys/atomic.h>
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(lm75_target, CONFIG_I2C_LM75_TARGET_LOG_LEVEL);
@@ -27,6 +28,16 @@ struct i2c_lm75_target_data {
 	uint8_t lm75_regs[8];
 	bool msb;
 	bool write_reg;
+	/* Latest poll read target_sensor successfully (see lm75_target_sensor_valid()) */
+	atomic_t sensor_valid;
+	/*
+	 * Latest successful reading, served when a poll fails with a
+	 * transient error; have_last_good is cleared on TURN_OFF.
+	 */
+	struct sensor_value last_good;
+	atomic_t have_last_good;
+	/* Cleared on TURN_OFF: a poll still running then discards its result */
+	atomic_t polling;
 };
 
 struct i2c_lm75_target_config {
@@ -87,7 +98,8 @@ static void lm75_target_encode_temp(struct i2c_lm75_target_data *data,
 /*
  * Runs in the system workqueue thread, not ISR context (unlike the k_timer
  * expiry function this replaces). Reschedules itself every 500ms to keep
- * polling the backing sensor for as long as the device exists.
+ * polling the backing sensor while polling is enabled (from init until
+ * TURN_OFF, and again from TURN_ON).
  */
 static void get_target_sensor_temp(struct k_work *work)
 {
@@ -96,17 +108,58 @@ static void get_target_sensor_temp(struct k_work *work)
 		CONTAINER_OF(dwork, struct i2c_lm75_target_data, sensor_work);
 	const struct i2c_lm75_target_config *config = data->dev->config;
 	struct sensor_value temp;
+	const char *note = "";
 	int ret;
 
 	ret = sensor_sample_fetch_chan(config->temp_sensor, SENSOR_CHAN_DIE_TEMP);
-	sensor_channel_get(config->temp_sensor, SENSOR_CHAN_DIE_TEMP, &temp);
+	if (ret == 0) {
+		ret = sensor_channel_get(config->temp_sensor, SENSOR_CHAN_DIE_TEMP, &temp);
+	}
+
+	/*
+	 * TURN_OFF can arrive while this poll is running (it cancels only a
+	 * pending poll, not one in progress): it has already served the
+	 * failsafe value, so drop this result and do not re-arm.
+	 */
+	if (!atomic_get(&data->polling)) {
+		return;
+	}
+
+	/*
+	 * What to serve when there is no reading this poll (documented with
+	 * failsafe-temp-millic in lm75-base.yaml):
+	 *  -ENODEV:  target_sensor is not ready (e.g. x86_peci_temp before the
+	 *            CPU is up): serve failsafe-temp-millic.
+	 *  -EBADMSG: target_sensor answered with a sensor error; if it still
+	 *            provides a value through channel_get (x86_peci_temp: its
+	 *            safe temperature on a 0x8000 reply), serve that value.
+	 *  other:    transient failure while target_sensor should be readable
+	 *            (e.g. a PECI transfer error): keep serving the last good
+	 *            reading, or failsafe-temp-millic if there is none yet.
+	 */
+	if (ret == 0) {
+		data->last_good = temp;
+		atomic_set(&data->have_last_good, 1);
+	} else if (ret == -EBADMSG &&
+		   sensor_channel_get(config->temp_sensor, SENSOR_CHAN_DIE_TEMP, &temp) == 0) {
+		note = " (sensor error, sensor's safe value)";
+	} else if (ret != -ENODEV && atomic_get(&data->have_last_good)) {
+		temp = data->last_good;
+		note = " (read failed, last good reading)";
+	} else {
+		temp = lm75_target_failsafe_value(config->failsafe_millic);
+		note = (ret == -ENODEV) ? " (sensor not ready, failsafe)" :
+					  " (read failed, no reading yet, failsafe)";
+	}
 
 	lm75_target_encode_temp(data, &temp);
+	/* Only a real reading counts as valid (silicom,fan-reset-hold waits on it) */
+	atomic_set(&data->sensor_valid, ret == 0);
 
 	/* val2 is millionths: zero-pad it, and print the sign once */
-	LOG_DBG("lm75 target sensor read %s%d.%06d",
+	LOG_DBG("lm75 target sensor read %s%d.%06d%s ret=%d",
 		(temp.val1 < 0 || temp.val2 < 0) ? "-" : "",
-		abs(temp.val1), abs(temp.val2));
+		abs(temp.val1), abs(temp.val2), note, ret);
 
 	k_work_reschedule(dwork, K_MSEC(500));
 }
@@ -278,16 +331,26 @@ static int i2c_lm75_target_init(const struct device *dev)
 
 	data->dev = dev;
 	k_work_init_delayable(&data->sensor_work, get_target_sensor_temp);
+	atomic_set(&data->polling, 1);
 	k_work_schedule(&data->sensor_work, K_MSEC(500));
 
 	return 0;
+}
+
+bool lm75_target_sensor_valid(const struct device *dev)
+{
+	struct i2c_lm75_target_data *data = dev->data;
+
+	return atomic_get(&data->sensor_valid) != 0;
 }
 
 #ifdef CONFIG_PM_DEVICE
 /*
  * TURN_OFF/TURN_ON come from the power domain this node sits on: the
  * backing target_sensor loses power along with it, so stop polling it
- * while off and resume once power is back.
+ * while off and resume once power is back. TURN_OFF cancels a pending poll
+ * without waiting; a poll already running finishes its fetch, then sees
+ * polling cleared, discards the result and does not re-arm.
  */
 static int lm75_target_pm_action(const struct device *dev,
 				  enum pm_device_action action)
@@ -303,7 +366,11 @@ static int lm75_target_pm_action(const struct device *dev,
 	case PM_DEVICE_ACTION_TURN_OFF: {
 		struct sensor_value failsafe = lm75_target_failsafe_value(config->failsafe_millic);
 
+		atomic_set(&data->polling, 0);
 		k_work_cancel_delayable(&data->sensor_work);
+		atomic_set(&data->sensor_valid, 0);
+		/* The last reading predates the power loss: never serve it again */
+		atomic_set(&data->have_last_good, 0);
 		/*
 		 * target_sensor loses power along with this node, so its last
 		 * sample is stale; report the configured failsafe value
@@ -313,6 +380,7 @@ static int lm75_target_pm_action(const struct device *dev,
 		break;
 	}
 	case PM_DEVICE_ACTION_TURN_ON:
+		atomic_set(&data->polling, 1);
 		k_work_reschedule(&data->sensor_work, K_MSEC(500));
 		break;
 	default:

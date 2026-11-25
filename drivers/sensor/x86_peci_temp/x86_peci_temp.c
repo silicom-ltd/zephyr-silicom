@@ -23,6 +23,12 @@ LOG_MODULE_REGISTER(x86_peci_temp, CONFIG_X86_PECI_TEMP_LOG_LEVEL);
 #define PECI_CONFIGHOSTID	0u
 #define PECI_CONFIGPARAM	0u
 
+/*
+ * Served when the CPU answers GetTemp() with 0x8000 (sensor error): the
+ * fetch fails with -EBADMSG and channel_get returns this value, so a
+ * consumer can choose to use it (e.g. the LM75 target) instead of its own
+ * no-reading fallback.
+ */
 #define PECI_SAFE_TEMP		72
 
 
@@ -147,9 +153,9 @@ static int peci_get_temp(const struct device *dev, float *temperature)
 			(int16_t)((packet.rx_buffer.buf[PECI_GET_TEMP_MSB] << 8) & 0xFF00));
 
 	if ((uint16_t)raw_cpu_temp == 0x8000) {
-		LOG_ERR("Invalid PECI temp 0x8000");
+		LOG_ERR("Invalid PECI temp 0x8000, reporting safe temp %d C", PECI_SAFE_TEMP);
 		*temperature = PECI_SAFE_TEMP;
-		return -1;
+		return -EBADMSG;
 	}
 
 	raw_reading = (uint16_t)raw_cpu_temp;
